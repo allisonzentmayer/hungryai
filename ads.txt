@@ -1,0 +1,4 @@
+# TODO: replace pub-0000000000000000 with your real AdSense publisher ID
+# (found in your AdSense account under Account > Settings > Account information)
+# once your application is approved. Until then this file has no effect.
+google.com, pub-0000000000000000, DIRECT, f08c47fec0942fa0
