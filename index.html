@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Nearby Eats — good food, fast, near you</title>
+  <title>HungryMap — good food, fast, near you</title>
   <meta name="description" content="Find genuinely good, open-now restaurants near your current location — ranked to surface real quality, not just review volume." />
   <link rel="stylesheet" href="style.css" />
   <!--
@@ -20,7 +20,7 @@
 </head>
 <body>
   <header class="topbar">
-    <h1>Nearby&nbsp;Eats</h1>
+    <h1><a href="/">Hungry<span class="brand-accent">Map</span></a></h1>
     <p class="tagline">Good food, fast, wherever you are.</p>
   </header>
 
@@ -29,10 +29,10 @@
       <div class="control-row">
         <label for="radius">Search radius</label>
         <select id="radius">
-          <option value="500">5 min walk (500m)</option>
-          <option value="1000" selected>10 min walk (1km)</option>
-          <option value="2000">20 min walk (2km)</option>
-          <option value="5000">Short drive (5km)</option>
+          <option value="402">5 min walk (0.25 mi)</option>
+          <option value="805" selected>10 min walk (0.5 mi)</option>
+          <option value="1609">20 min walk (1 mi)</option>
+          <option value="4828">Short drive (3 mi)</option>
         </select>
       </div>
 
