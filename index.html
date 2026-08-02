@@ -6,6 +6,17 @@
   <title>Nearby Eats — good food, fast, near you</title>
   <meta name="description" content="Find genuinely good, open-now restaurants near your current location — ranked to surface real quality, not just review volume." />
   <link rel="stylesheet" href="style.css" />
+  <!--
+    AdSense loader — once your AdSense account is approved
+    (google.com/adsense), uncomment this, replacing ca-pub-XXXXXXXXXXXXXXXX
+    with your real publisher ID:
+
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-XXXXXXXXXXXXXXXX" crossorigin="anonymous"></script>
+
+    Also open AdSense > Privacy & messaging and turn on a GDPR/UK message —
+    it generates a script snippet (Google-certified CMP) to paste here too,
+    required before showing personalized ads to EEA/UK visitors.
+  -->
 </head>
 <body>
   <header class="topbar">
@@ -53,8 +64,23 @@
   </main>
 
   <div class="ad-slot" aria-label="Advertisement">
-    <!-- AdSense script + <ins> unit goes here once the site is approved -->
+    <!--
+      Uncomment once approved, filling in data-ad-client (your ca-pub-... id)
+      and data-ad-slot (this unit's id from AdSense > Ads > By ad unit):
+
+      <ins class="adsbygoogle"
+           style="display:block"
+           data-ad-client="ca-pub-XXXXXXXXXXXXXXXX"
+           data-ad-slot="0000000000"
+           data-ad-format="auto"
+           data-full-width-responsive="true"></ins>
+      <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
+    -->
   </div>
+
+  <footer class="site-footer">
+    <a href="privacy.html">Privacy Policy</a>
+  </footer>
 
   <script src="app.js"></script>
   <!--
