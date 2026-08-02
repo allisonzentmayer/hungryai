@@ -13,31 +13,60 @@ function initMap() {
   });
 
   document.getElementById("searchBtn").addEventListener("click", runSearch);
+  document.getElementById("enableLocationBtn").addEventListener("click", attemptLocate);
 
-  // Try to get the user's location automatically on load.
-  locateUser().then(() => runSearch()).catch(() => {
-    setStatus("Couldn't get your location — click the map to drop a pin, or allow location access.");
-  });
+  // Default to the user's location automatically on load.
+  attemptLocate();
 
   map.addListener("click", (e) => {
     userLocation = { lat: e.latLng.lat(), lng: e.latLng.lng() };
+    hideLocationButton();
     runSearch();
   });
 }
 
 function locateUser() {
   return new Promise((resolve, reject) => {
-    if (!navigator.geolocation) return reject();
+    if (!navigator.geolocation) return reject({ code: 0 });
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         userLocation = { lat: pos.coords.latitude, lng: pos.coords.longitude };
         map.setCenter(userLocation);
         resolve();
       },
-      () => reject(),
+      (err) => reject(err),
       { timeout: 8000 }
     );
   });
+}
+
+// Asks for location access (the browser shows its own permission prompt) and
+// uses the result once granted. Falls back to a retry button if access is
+// denied or unavailable, so the user isn't stuck without a way to opt back in.
+function attemptLocate() {
+  hideLocationButton();
+  setStatus("Finding your location…");
+  return locateUser()
+    .then(() => {
+      setStatus("");
+      runSearch();
+    })
+    .catch((err) => {
+      if (err && err.code === 1) {
+        setStatus("Location access denied — enable it for this site, then try again.");
+      } else {
+        setStatus("Couldn't get your location — click the map to drop a pin, or try again.");
+      }
+      showLocationButton();
+    });
+}
+
+function showLocationButton() {
+  document.getElementById("enableLocationBtn").hidden = false;
+}
+
+function hideLocationButton() {
+  document.getElementById("enableLocationBtn").hidden = true;
 }
 
 function setStatus(msg) {
