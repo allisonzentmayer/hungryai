@@ -42,6 +42,15 @@
 
       <button id="searchBtn">Find good food near me</button>
       <button id="enableLocationBtn" class="secondary-btn" type="button" hidden>Enable location access</button>
+
+      <div class="control-row zip-row">
+        <label for="zipInput">Or search by zip code</label>
+        <div class="zip-input-group">
+          <input type="text" id="zipInput" inputmode="numeric" autocomplete="postal-code" placeholder="e.g. 10001" />
+          <button id="zipBtn" class="secondary-btn" type="button">Go</button>
+        </div>
+      </div>
+
       <p id="status" class="status" role="status"></p>
     </section>
 

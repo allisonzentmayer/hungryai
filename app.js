@@ -14,6 +14,13 @@ function initMap() {
 
   document.getElementById("searchBtn").addEventListener("click", runSearch);
   document.getElementById("enableLocationBtn").addEventListener("click", attemptLocate);
+  document.getElementById("zipBtn").addEventListener("click", attemptZipSearch);
+  document.getElementById("zipInput").addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      attemptZipSearch();
+    }
+  });
 
   // Default to the user's location automatically on load.
   attemptLocate();
@@ -35,9 +42,47 @@ function locateUser() {
         resolve();
       },
       (err) => reject(err),
-      { timeout: 8000 }
+      // maximumAge lets the browser hand back a recent cached fix instead of
+      // forcing a fresh (slower, more failure-prone) lookup on every load.
+      { timeout: 15000, maximumAge: 5 * 60 * 1000 }
     );
   });
+}
+
+function geocodeZip(zip) {
+  return new Promise((resolve, reject) => {
+    const geocoder = new google.maps.Geocoder();
+    geocoder.geocode({ address: zip }, (results, status) => {
+      if (status === "OK" && results[0]) {
+        const loc = results[0].geometry.location;
+        resolve({ lat: loc.lat(), lng: loc.lng() });
+      } else {
+        reject(status);
+      }
+    });
+  });
+}
+
+function attemptZipSearch() {
+  const zip = document.getElementById("zipInput").value.trim();
+  if (!zip) {
+    setStatus("Enter a zip code first.");
+    return;
+  }
+
+  hideLocationButton();
+  setStatus("Looking up that zip code…");
+  geocodeZip(zip)
+    .then((loc) => {
+      userLocation = loc;
+      map.setCenter(loc);
+      map.setZoom(14);
+      setStatus("");
+      runSearch();
+    })
+    .catch(() => {
+      setStatus("Couldn't find that zip code — check it and try again.");
+    });
 }
 
 // Asks for location access (the browser shows its own permission prompt) and
@@ -53,9 +98,11 @@ function attemptLocate() {
     })
     .catch((err) => {
       if (err && err.code === 1) {
-        setStatus("Location access denied — enable it for this site, then try again.");
+        setStatus("Location access denied — enable it for this site, then try again, or enter a zip code below.");
+      } else if (err && err.code === 3) {
+        setStatus("Location took too long to find — try again, or enter a zip code below.");
       } else {
-        setStatus("Couldn't get your location — click the map to drop a pin, or try again.");
+        setStatus("Couldn't get your location — click the map to drop a pin, or enter a zip code below.");
       }
       showLocationButton();
     });
