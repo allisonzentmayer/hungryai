@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Nearby Eats — good food, fast, near you</title>
+  <meta name="description" content="Find genuinely good, open-now restaurants near your current location — ranked to surface real quality, not just review volume." />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <h1>Nearby&nbsp;Eats</h1>
+    <p class="tagline">Good food, fast, wherever you are.</p>
+  </header>
+
+  <main class="layout">
+    <section class="controls" aria-label="Search filters">
+      <div class="control-row">
+        <label for="radius">Search radius</label>
+        <select id="radius">
+          <option value="500">5 min walk (500m)</option>
+          <option value="1000" selected>10 min walk (1km)</option>
+          <option value="2000">20 min walk (2km)</option>
+          <option value="5000">Short drive (5km)</option>
+        </select>
+      </div>
+
+      <div class="control-row">
+        <label for="minRating">Minimum rating</label>
+        <select id="minRating">
+          <option value="0">Any</option>
+          <option value="3.5">3.5+</option>
+          <option value="4" selected>4.0+</option>
+          <option value="4.5">4.5+</option>
+        </select>
+      </div>
+
+      <div class="control-row checkbox-row">
+        <input type="checkbox" id="openNow" checked />
+        <label for="openNow">Open now</label>
+      </div>
+
+      <button id="searchBtn">Find good food near me</button>
+      <p id="status" class="status" role="status"></p>
+    </section>
+
+    <div id="map" class="map"></div>
+
+    <section class="results" aria-label="Results">
+      <ol id="resultsList" class="results-list"></ol>
+    </section>
+  </main>
+
+  <div class="ad-slot" aria-label="Advertisement">
+    <!-- AdSense script + <ins> unit goes here once the site is approved -->
+  </div>
+
+  <script src="app.js"></script>
+  <!--
+    Replace YOUR_CLIENT_SIDE_KEY below with the restricted (HTTP-referrer-locked)
+    Maps JavaScript API key — this one is safe to expose in the browser.
+  -->
+  <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBTkyxo7QMyptUiJKWKXgaUO_1Z_XK7s6c&callback=initMap" async defer></script>
+</body>
+</html>
