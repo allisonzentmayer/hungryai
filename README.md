@@ -1,4 +1,4 @@
-# Nearby Eats — MVP
+# HungryMap — MVP
 
 A map-based tool: give it your location, it shows genuinely good, open-now
 restaurants nearby, ranked by a weighted score (not just raw star rating) so
@@ -38,7 +38,7 @@ Create Credentials → API Key. You need **two separate keys**:
 ## 2. Push this to GitHub
 
 ```
-cd nearby-eats
+cd hungrymap
 git init
 git add .
 git commit -m "Initial MVP"
@@ -66,9 +66,10 @@ ranked list of nearby restaurants with markers on the map.
 - Buy a domain (Namecheap, etc.), add it under Netlify → Domain settings,
   follow their DNS instructions.
 - Add your `/*` domain to Key B's referrer restriction (step 1).
-- Once the site's live on the real domain with an About/Privacy
-  Policy/Contact page, apply for Google AdSense and drop their script into
-  `index.html`'s `<div class="ad-slot">`.
+- `privacy.html` and the commented-out AdSense loader/ad unit in
+  `index.html` are already scaffolded — once the site's live on the real
+  domain, apply for Google AdSense and uncomment those blocks with your
+  approved publisher/ad-slot IDs (see the inline TODOs).
 
 ## Known limitations to fix next (not needed for MVP)
 
