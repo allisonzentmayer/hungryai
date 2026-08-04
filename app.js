@@ -7,6 +7,12 @@ let markersById = new Map();
 let userLocation = null;
 let notableRestaurants = [];
 let searchAreaBtn;
+let lastResults = [];
+// Set around programmatic camera moves (fitBounds, focusing a result) so the
+// dragend/zoom_changed listeners below can tell those apart from the user
+// actually panning/zooming by hand — only the latter should surface
+// "Search this area".
+let suppressSearchAreaPrompt = false;
 
 // Curated Michelin/James Beard restaurants (data/notable-restaurants.json).
 // Ones that also turn up in the live Places search always show (matched by
@@ -26,24 +32,9 @@ fetch("data/notable-restaurants.json")
   .then((data) => { notableRestaurants = data; })
   .catch(() => { notableRestaurants = []; });
 
-document.querySelectorAll(".mascot-pig").forEach((pig) => {
-  pig.addEventListener("click", (e) => {
-    const wrap = pig.closest(".mascot-wrap");
-    const bubble = wrap?.querySelector(".oink-bubble");
-    if (!wrap || !bubble) return;
-
-    const rect = wrap.getBoundingClientRect();
-    bubble.style.left = `${e.clientX - rect.left}px`;
-    bubble.style.top = `${e.clientY - rect.top}px`;
-
-    bubble.classList.remove("show");
-    // Force reflow so re-adding the class restarts the animation on rapid clicks.
-    void bubble.offsetWidth;
-    bubble.classList.add("show");
-    clearTimeout(bubble._oinkTimeout);
-    bubble._oinkTimeout = setTimeout(() => bubble.classList.remove("show"), 900);
-  });
-});
+// Pig mascot click behavior (the "Oink!" bubble) lives in mascot-oink.js,
+// loaded alongside this file — shared with about.html, which doesn't load
+// the rest of this map/search-specific script.
 
 // Called by the Google Maps script tag once it loads.
 function initMap() {
@@ -73,9 +64,20 @@ function initMap() {
     }
   });
   document.getElementById("clearFiltersBtn").addEventListener("click", clearFilters);
+  document.getElementById("chooseForMeBtn").addEventListener("click", chooseForMe);
+
+  // Filters re-run the search live — there's no separate "go" button for
+  // them (searchBtn is hidden in favor of the header CTA), so without this
+  // changing radius/open-now wouldn't do anything until the next unrelated
+  // search trigger.
+  ["radius", "openNow"].forEach((id) => {
+    document.getElementById(id).addEventListener("change", () => {
+      if (userLocation) runSearch();
+    });
+  });
 
   // Default to the user's location automatically on load.
-  attemptLocate();
+  initLocationOnLoad();
 
   map.addListener("click", (e) => {
     userLocation = { lat: e.latLng.lat(), lng: e.latLng.lng() };
@@ -83,13 +85,18 @@ function initMap() {
     runSearch();
   });
 
-  // Only offer to re-search once the user has actually panned away from
-  // wherever the current results are centered on.
+  // Offer to re-search once the user has actually panned away from wherever
+  // the current results are centered on, or changed the zoom at all (either
+  // one means what's on screen no longer matches what was last searched).
   map.addListener("dragend", () => {
-    if (!userLocation || !searchAreaBtn) return;
+    if (!userLocation || !searchAreaBtn || suppressSearchAreaPrompt) return;
     const center = map.getCenter();
     const moved = milesBetween(userLocation, { lat: center.lat(), lng: center.lng() });
     searchAreaBtn.hidden = moved < 0.3;
+  });
+  map.addListener("zoom_changed", () => {
+    if (!userLocation || !searchAreaBtn || suppressSearchAreaPrompt) return;
+    searchAreaBtn.hidden = false;
   });
 }
 
@@ -142,17 +149,32 @@ function addMapControls() {
     const center = map.getCenter();
     userLocation = { lat: center.lat(), lng: center.lng() };
     hideLocationButton();
-    runSearch();
+    // Search exactly what's currently visible — the radius dropdown is
+    // ignored here — and don't let the search re-fit/zoom the map afterward,
+    // since the whole point was to search this specific view.
+    runSearch({ radiusOverrideMeters: currentViewportRadiusMeters(), fit: false });
   });
   map.controls[google.maps.ControlPosition.TOP_CENTER].push(searchAreaBtn);
 }
 
 function clearFilters() {
   document.getElementById("radius").value = "805";
-  document.getElementById("minRating").value = "4";
   document.getElementById("openNow").checked = true;
   document.getElementById("zipInput").value = "";
   if (userLocation) runSearch();
+}
+
+// Picks a random place from whatever's currently on screen and opens it in
+// Google Maps, same as tapping a card's external-link button would.
+function chooseForMe() {
+  if (lastResults.length === 0) {
+    setStatus("Search first, then let the pig pick for you.");
+    return;
+  }
+  const pick = lastResults[Math.floor(Math.random() * lastResults.length)];
+  scrollToCard(pick.id);
+  highlightMarker(pick.id);
+  if (pick.mapsUrl) window.open(pick.mapsUrl, "_blank");
 }
 
 function locateUser() {
@@ -198,6 +220,7 @@ function attemptZipSearch() {
   geocodeZip(zip)
     .then((loc) => {
       userLocation = loc;
+      suppressSearchAreaPrompt = true;
       map.setCenter(loc);
       map.setZoom(14);
       setStatus("");
@@ -208,15 +231,32 @@ function attemptZipSearch() {
     });
 }
 
+// Tried gating the automatic attempt on navigator.permissions.query()'s
+// reported state (only auto-locate when already "granted"), to dodge
+// browsers that silently ignore a gesture-less getCurrentPosition() call on
+// a first visit. That backfired — support for querying the "geolocation"
+// permission is inconsistent across browsers (notably Safari), so it made
+// the very first attempt flaky in a *different* way instead of fixing it.
+// Simpler and more robust: always attempt automatically, and show the
+// fallback button immediately rather than waiting for a failure — so
+// there's always a guaranteed one-tap path available up front, regardless
+// of whether the silent automatic attempt works, fails, or never resolves.
+function initLocationOnLoad() {
+  showLocationButton();
+  attemptLocate();
+}
+
 // Asks for location access (the browser shows its own permission prompt) and
-// uses the result once granted. Falls back to a retry button if access is
-// denied or unavailable, so the user isn't stuck without a way to opt back in.
+// uses the result once granted. The fallback button is left visible for the
+// duration of the attempt (not just after a failure) and only hidden on an
+// actual successful fix, so a silently-stuck attempt never leaves the user
+// with nothing to click.
 function attemptLocate() {
-  hideLocationButton();
   setStatus("Finding your location…");
   return locateUser()
     .then(() => {
       setStatus("");
+      hideLocationButton();
       runSearch();
     })
     .catch((err) => {
@@ -243,21 +283,22 @@ function setStatus(msg) {
   document.getElementById("status").textContent = msg;
 }
 
-async function runSearch() {
+async function runSearch({ radiusOverrideMeters, fit = true } = {}) {
   if (!userLocation) {
     setStatus("Set a location first — allow location access or click the map.");
     return;
   }
 
-  const radius = document.getElementById("radius").value;
-  const minRating = document.getElementById("minRating").value;
+  const radius = radiusOverrideMeters ?? document.getElementById("radius").value;
   const openNow = document.getElementById("openNow").checked;
 
   setStatus("Finding good places…");
   document.getElementById("searchBtn").disabled = true;
   if (searchAreaBtn) searchAreaBtn.hidden = true;
 
-  const url = `/.netlify/functions/search-restaurants?lat=${userLocation.lat}&lng=${userLocation.lng}&radius=${radius}&minRating=${minRating}&openNow=${openNow}`;
+  // No minRating param — we're leaning on the Yelp cross-check + weighted
+  // score to surface quality instead of a hard Google-star-rating cutoff.
+  const url = `/.netlify/functions/search-restaurants?lat=${userLocation.lat}&lng=${userLocation.lng}&radius=${radius}&openNow=${openNow}`;
 
   try {
     const res = await fetch(url);
@@ -269,14 +310,18 @@ async function runSearch() {
     }
 
     const matched = combineResults(data.results || [], userLocation);
-    renderResults(matched, { fit: true });
+    renderResults(matched, { fit });
     setStatus("");
     document.getElementById("resultsCount").textContent = `${matched.length} places found`;
 
-    // Once the map settles on that view, layer in any curated notable spots
-    // that happen to already be on screen — never ones outside it, so they
-    // can't drag the zoom out wider than the actual search results need.
-    google.maps.event.addListenerOnce(map, "idle", () => {
+    // Layer in curated notable spots that happen to already be on screen —
+    // never ones outside it, so they can't drag the zoom out wider than the
+    // actual search results need. When we're about to fit/re-zoom (fit:
+    // true), wait for that to settle before reading bounds; when we're not
+    // moving the map at all (fit: false), current bounds are already final,
+    // so do it immediately — waiting for "idle" here would mean waiting for
+    // some future, unrelated map interaction, since nothing is changing.
+    const layerInExtras = () => {
       const bounds = map.getBounds();
       if (!bounds) return;
       const shownIds = new Set(matched.map((r) => r.id));
@@ -288,7 +333,12 @@ async function runSearch() {
       const full = [...matched, ...extras].sort((a, b) => a.distance - b.distance);
       renderResults(full, { fit: false });
       document.getElementById("resultsCount").textContent = `${full.length} places found`;
-    });
+    };
+    if (fit) {
+      google.maps.event.addListenerOnce(map, "idle", layerInExtras);
+    } else {
+      layerInExtras();
+    }
   } catch (err) {
     setStatus("Network error — try again.");
   } finally {
@@ -304,7 +354,13 @@ function combineResults(regularResults, center) {
   const combined = regularResults.map((place) => {
     const distance = milesBetween(center, place);
     const notable = notableById.get(place.id);
-    return { ...place, distance, isNotable: Boolean(notable), awards: notable ? notable.awards : [] };
+    return {
+      ...place,
+      distance,
+      isNotable: Boolean(notable),
+      awards: notable ? notable.awards : [],
+      tags: notable ? notable.tags || [] : [],
+    };
   });
 
   combined.sort((a, b) => a.distance - b.distance);
@@ -322,6 +378,7 @@ function notableAsResult(n, center) {
     distance: milesBetween(center, n),
     isNotable: true,
     awards: n.awards,
+    tags: n.tags || [],
     mapsUrl: `https://www.google.com/maps/place/?q=place_id:${n.id}`,
     rating: null,
     reviewCount: null,
@@ -355,6 +412,20 @@ function milesBetween(a, b) {
   const lat2 = toRad(b.lat);
   const h = Math.sin(dLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) ** 2;
   return R * 2 * Math.asin(Math.sqrt(h));
+}
+
+// Radius (meters) of the largest circle that fits entirely inside the
+// current visible map area — used so "Search this area" searches only what's
+// actually on screen, not an arbitrary fixed distance from the dropdown.
+function currentViewportRadiusMeters() {
+  const bounds = map.getBounds();
+  if (!bounds) return null;
+  const center = map.getCenter();
+  const centerPoint = { lat: center.lat(), lng: center.lng() };
+  const ne = bounds.getNorthEast();
+  const halfHeightMiles = milesBetween(centerPoint, { lat: ne.lat(), lng: centerPoint.lng });
+  const halfWidthMiles = milesBetween(centerPoint, { lat: centerPoint.lat, lng: ne.lng() });
+  return Math.round(Math.min(halfHeightMiles, halfWidthMiles) * 1609.34);
 }
 
 function pinMarkerIcon() {
@@ -399,6 +470,7 @@ function highlightMarker(id) {
 
 function renderResults(results, { fit = true } = {}) {
   clearMarkers();
+  lastResults = results;
   const list = document.getElementById("resultsList");
   list.innerHTML = "";
 
@@ -436,6 +508,9 @@ function renderResults(results, { fit = true } = {}) {
     const badges = (place.awards || [])
       .map((a) => `<span class="award-badge">${escapeHtml(awardBadgeText(a))}</span>`)
       .join("");
+    const traits = (place.tags || [])
+      .map((t) => `<span class="trait-badge">${escapeHtml(t)}</span>`)
+      .join("");
 
     const badgeContent = place.isNotable
       ? `<svg class="badge-star" viewBox="0 0 40 40" aria-hidden="true"><path d="${STAR_PATH}" fill="currentColor"/></svg><span class="badge-num">${i + 1}</span>`
@@ -454,14 +529,21 @@ function renderResults(results, { fit = true } = {}) {
           ${priceStr ? `${priceStr} · ` : ""}${place.cuisine ? `${escapeHtml(place.cuisine)}` : ""}${place.cuisine && openStr ? " · " : ""}${openStr}
         </div>
         ${badges ? `<div class="award-badges">${badges}</div>` : ""}
+        ${traits ? `<div class="trait-badges">${traits}</div>` : ""}
       </div>
       ${place.mapsUrl ? `<button type="button" class="open-external-btn" title="Open in Google Maps" aria-label="Open in Google Maps">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
       </button>` : ""}
     `;
     li.addEventListener("click", () => {
+      // Focusing one result isn't "I want to search a new area" — don't pop
+      // the search-area button just because this zooms in.
+      suppressSearchAreaPrompt = true;
       map.panTo({ lat: place.lat, lng: place.lng });
       map.setZoom(17);
+      google.maps.event.addListenerOnce(map, "idle", () => {
+        suppressSearchAreaPrompt = false;
+      });
       highlightMarker(place.id);
     });
     const externalBtn = li.querySelector(".open-external-btn");
@@ -485,11 +567,15 @@ function fitMapToResults(results) {
   results.forEach((r) => bounds.extend({ lat: r.lat, lng: r.lng }));
   if (bounds.isEmpty()) return;
 
+  suppressSearchAreaPrompt = true;
   map.fitBounds(bounds, 48);
   // fitBounds can over-zoom when everything is clustered close together
   // (or there's only one result) — cap it so we don't end up street-level.
   google.maps.event.addListenerOnce(map, "bounds_changed", () => {
     if (map.getZoom() > 17) map.setZoom(17);
+  });
+  google.maps.event.addListenerOnce(map, "idle", () => {
+    suppressSearchAreaPrompt = false;
   });
 }
 

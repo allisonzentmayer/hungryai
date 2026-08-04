@@ -10,6 +10,11 @@
         "type": "michelin",
         "stars": 3
       }
+    ],
+    "tags": [
+      "Tasting Menu",
+      "Plant-Based Menu",
+      "Kitchen Tour"
     ]
   },
   {
@@ -28,6 +33,11 @@
         "category": "Outstanding Chef",
         "year": 2025
       }
+    ],
+    "tags": [
+      "Korean Tasting Menu",
+      "Exceptional Service",
+      "Wine List"
     ]
   },
   {
@@ -41,6 +51,11 @@
         "type": "michelin",
         "stars": 3
       }
+    ],
+    "tags": [
+      "Refined Seafood",
+      "Impeccable Service",
+      "Elegant Dining Room"
     ]
   },
   {
@@ -54,6 +69,11 @@
         "type": "michelin",
         "stars": 3
       }
+    ],
+    "tags": [
+      "Tasting Menu",
+      "Wine Pairing",
+      "Romantic Atmosphere"
     ]
   },
   {
@@ -67,6 +87,11 @@
         "type": "michelin",
         "stars": 3
       }
+    ],
+    "tags": [
+      "Omakase",
+      "Sake Pairing",
+      "Chef's Counter"
     ]
   },
   {
@@ -80,6 +105,11 @@
         "type": "michelin",
         "stars": 2
       }
+    ],
+    "tags": [
+      "Scandinavian Tasting Menu",
+      "Elegant Dining Room",
+      "Signature Desserts"
     ]
   },
   {
@@ -93,6 +123,11 @@
         "type": "michelin",
         "stars": 2
       }
+    ],
+    "tags": [
+      "Tasting Menu",
+      "Open Kitchen",
+      "Warm Ambience"
     ]
   },
   {
@@ -106,6 +141,11 @@
         "type": "michelin",
         "stars": 2
       }
+    ],
+    "tags": [
+      "Tasting Menu",
+      "Intimate Setting",
+      "Cocktail Pairings"
     ]
   },
   {
@@ -124,6 +164,11 @@
         "category": "Best Chef: New York State",
         "year": 2023
       }
+    ],
+    "tags": [
+      "Korean Tasting Menu",
+      "Chef's Counter",
+      "Beverage Pairings"
     ]
   },
   {
@@ -137,6 +182,11 @@
         "type": "michelin",
         "stars": 2
       }
+    ],
+    "tags": [
+      "Farm-to-Table",
+      "Tasting Menu",
+      "Scenic Grounds"
     ]
   },
   {
@@ -150,6 +200,11 @@
         "type": "michelin",
         "stars": 2
       }
+    ],
+    "tags": [
+      "Seafood Tasting Menu",
+      "Open Kitchen",
+      "Wine Pairing"
     ]
   },
   {
@@ -163,6 +218,11 @@
         "type": "michelin",
         "stars": 2
       }
+    ],
+    "tags": [
+      "Tasting Menu",
+      "Non-Alcoholic Pairing",
+      "Open Kitchen"
     ]
   },
   {
@@ -176,6 +236,11 @@
         "type": "michelin",
         "stars": 2
       }
+    ],
+    "tags": [
+      "French Cuisine",
+      "Tasting Menu",
+      "Exceptional Service"
     ]
   },
   {
@@ -189,6 +254,11 @@
         "type": "michelin",
         "stars": 2
       }
+    ],
+    "tags": [
+      "Tasting Menu",
+      "Central Park Views",
+      "Inventive Cuisine"
     ]
   },
   {
@@ -202,6 +272,11 @@
         "type": "michelin",
         "stars": 2
       }
+    ],
+    "tags": [
+      "Modern Korean Cuisine",
+      "Intimate Atmosphere",
+      "Attentive Service"
     ]
   },
   {
@@ -215,6 +290,11 @@
         "type": "michelin",
         "stars": 2
       }
+    ],
+    "tags": [
+      "Omakase",
+      "Chef's Counter",
+      "Premium Sushi"
     ]
   },
   {
@@ -228,6 +308,11 @@
         "type": "michelin",
         "stars": 2
       }
+    ],
+    "tags": [
+      "Kaiseki Tasting Menu",
+      "Chef's Counter",
+      "Zen Atmosphere"
     ]
   },
   {
@@ -241,6 +326,11 @@
         "type": "michelin",
         "stars": 2
       }
+    ],
+    "tags": [
+      "Tasting Menu",
+      "Skyline Views",
+      "Exceptional Service"
     ]
   },
   {
@@ -254,6 +344,11 @@
         "type": "michelin",
         "stars": 2
       }
+    ],
+    "tags": [
+      "Omakase",
+      "Sake Pairing",
+      "Zen Ambience"
     ]
   },
   {
@@ -267,6 +362,11 @@
         "type": "michelin",
         "stars": 2
       }
+    ],
+    "tags": [
+      "Tasting Menu",
+      "Garden Views",
+      "Exceptional Service"
     ]
   },
   {
@@ -280,6 +380,11 @@
         "type": "michelin",
         "stars": 1
       }
+    ],
+    "tags": [
+      "Tasting Menu",
+      "Signature Breakfast Taco",
+      "Cozy Ambience"
     ]
   },
   {
@@ -293,6 +398,11 @@
         "type": "michelin",
         "stars": 1
       }
+    ],
+    "tags": [
+      "Omakase",
+      "Locally Sourced Seafood",
+      "Intimate Atmosphere"
     ]
   },
   {
@@ -306,6 +416,11 @@
         "type": "michelin",
         "stars": 1
       }
+    ],
+    "tags": [
+      "Korean Tasting Menu",
+      "Chef's Counter",
+      "Beverage Pairings"
     ]
   },
   {
@@ -319,6 +434,11 @@
         "type": "michelin",
         "stars": 1
       }
+    ],
+    "tags": [
+      "Seafood Small Plates",
+      "Wine & Cocktails",
+      "Vibrant Atmosphere"
     ]
   },
   {
@@ -332,6 +452,12 @@
         "type": "michelin",
         "stars": 1
       }
+    ],
+    "tags": [
+      "French Fine Dining",
+      "Elegant Ambience",
+      "Attentive Service",
+      "Wine List"
     ]
   },
   {
@@ -345,6 +471,12 @@
         "type": "michelin",
         "stars": 1
       }
+    ],
+    "tags": [
+      "Spanish Tapas",
+      "Deep Wine List",
+      "Date Night",
+      "Intimate Setting"
     ]
   },
   {
@@ -358,6 +490,12 @@
         "type": "michelin",
         "stars": 1
       }
+    ],
+    "tags": [
+      "Mexican Tasting Menu",
+      "Chef's Counter",
+      "Creative Cocktails",
+      "Attentive Service"
     ]
   },
   {
@@ -371,6 +509,12 @@
         "type": "michelin",
         "stars": 1
       }
+    ],
+    "tags": [
+      "Korean Steakhouse",
+      "Dry-Aged Steak",
+      "Wine Program",
+      "Lively Atmosphere"
     ]
   },
   {
@@ -384,6 +528,11 @@
         "type": "michelin",
         "stars": 1
       }
+    ],
+    "tags": [
+      "Open Kitchen",
+      "New American Fine Dining",
+      "Attentive Service"
     ]
   },
   {
@@ -397,6 +546,12 @@
         "type": "michelin",
         "stars": 1
       }
+    ],
+    "tags": [
+      "French Fine Dining",
+      "Kitchen Tour",
+      "Impeccable Service",
+      "Special Occasions"
     ]
   },
   {
@@ -410,6 +565,12 @@
         "type": "michelin",
         "stars": 1
       }
+    ],
+    "tags": [
+      "Vegetarian Tasting Menu",
+      "Wine Pairings",
+      "Creative Vegetable Dishes",
+      "Attentive Staff"
     ]
   },
   {
@@ -423,6 +584,12 @@
         "type": "michelin",
         "stars": 1
       }
+    ],
+    "tags": [
+      "Seafood Tasting Menu",
+      "Elegant Dining Room",
+      "Special Occasions",
+      "Attentive Service"
     ]
   },
   {
@@ -436,6 +603,11 @@
         "type": "michelin",
         "stars": 1
       }
+    ],
+    "tags": [
+      "Wagyu Steak",
+      "Date Night",
+      "Intimate Setting"
     ]
   },
   {
@@ -449,6 +621,11 @@
         "type": "michelin",
         "stars": 1
       }
+    ],
+    "tags": [
+      "Farm To Table",
+      "Seasonal Tasting Menu",
+      "Attentive Service"
     ]
   },
   {
@@ -462,6 +639,11 @@
         "type": "michelin",
         "stars": 1
       }
+    ],
+    "tags": [
+      "Signature Duck",
+      "European Bistro Fare",
+      "Craft Cocktails"
     ]
   },
   {
@@ -475,6 +657,11 @@
         "type": "michelin",
         "stars": 1
       }
+    ],
+    "tags": [
+      "Chef's Counter",
+      "Art Gallery Setting",
+      "Multi-Course Tasting Menu"
     ]
   },
   {
@@ -488,6 +675,12 @@
         "type": "michelin",
         "stars": 1
       }
+    ],
+    "tags": [
+      "Seasonal American",
+      "Signature Burger",
+      "Cocktail Program",
+      "Warm Service"
     ]
   },
   {
@@ -501,6 +694,12 @@
         "type": "michelin",
         "stars": 1
       }
+    ],
+    "tags": [
+      "Caviar Focused Menu",
+      "Kitchen Tour",
+      "Attentive Service",
+      "Intimate Setting"
     ]
   },
   {
@@ -514,6 +713,11 @@
         "type": "michelin",
         "stars": 1
       }
+    ],
+    "tags": [
+      "Omakase",
+      "Intimate Counter",
+      "Sake Pairing"
     ]
   },
   {
@@ -527,6 +731,11 @@
         "type": "michelin",
         "stars": 1
       }
+    ],
+    "tags": [
+      "Ramyun",
+      "Signature Toro Ssam Bap",
+      "Cozy Atmosphere"
     ]
   },
   {
@@ -540,6 +749,11 @@
         "type": "michelin",
         "stars": 1
       }
+    ],
+    "tags": [
+      "Omakase",
+      "Serene Atmosphere",
+      "Wine Pairing"
     ]
   },
   {
@@ -553,6 +767,12 @@
         "type": "michelin",
         "stars": 1
       }
+    ],
+    "tags": [
+      "Korean Tasting Menu",
+      "Caviar",
+      "Cozy Ambience",
+      "Special Occasions"
     ]
   },
   {
@@ -566,6 +786,11 @@
         "type": "michelin",
         "stars": 1
       }
+    ],
+    "tags": [
+      "Korean Tasting Menu",
+      "Creative Flavors",
+      "Attentive Service"
     ]
   },
   {
@@ -579,6 +804,11 @@
         "type": "michelin",
         "stars": 1
       }
+    ],
+    "tags": [
+      "Omakase",
+      "Intimate Counter",
+      "Premium Sushi"
     ]
   },
   {
@@ -592,6 +822,12 @@
         "type": "michelin",
         "stars": 1
       }
+    ],
+    "tags": [
+      "French Japanese Fusion",
+      "Tasting Menu",
+      "Burgundy Wine List",
+      "Elegant Ambience"
     ]
   },
   {
@@ -605,6 +841,11 @@
         "type": "michelin",
         "stars": 1
       }
+    ],
+    "tags": [
+      "French Fine Dining",
+      "Unhurried Pacing",
+      "Special Occasions"
     ]
   },
   {
@@ -618,6 +859,12 @@
         "type": "michelin",
         "stars": 1
       }
+    ],
+    "tags": [
+      "French Cuisine",
+      "Garden Ambience",
+      "Sommelier Wine Pairing",
+      "Special Occasions"
     ]
   },
   {
@@ -631,6 +878,12 @@
         "type": "michelin",
         "stars": 1
       }
+    ],
+    "tags": [
+      "Hand Rolls",
+      "Fresh Sashimi",
+      "Date Night",
+      "Cozy Bar Seating"
     ]
   },
   {
@@ -649,6 +902,11 @@
         "category": "Best Chef: New York State",
         "year": 2026
       }
+    ],
+    "tags": [
+      "Korean Tasting Menu",
+      "Fermentation Focused",
+      "Great Service"
     ]
   },
   {
@@ -662,6 +920,12 @@
         "type": "michelin",
         "stars": 1
       }
+    ],
+    "tags": [
+      "Kaiseki",
+      "Date Night",
+      "Intimate Ambience",
+      "Chef's Counter"
     ]
   },
   {
@@ -675,6 +939,11 @@
         "type": "michelin",
         "stars": 1
       }
+    ],
+    "tags": [
+      "Omakase",
+      "Intimate Counter",
+      "Exceptional Service"
     ]
   },
   {
@@ -688,6 +957,12 @@
         "type": "michelin",
         "stars": 1
       }
+    ],
+    "tags": [
+      "Tasting Menu",
+      "Korean-French Fusion",
+      "Wine Pairing",
+      "Open Kitchen"
     ]
   },
   {
@@ -701,6 +976,11 @@
         "type": "michelin",
         "stars": 1
       }
+    ],
+    "tags": [
+      "Edomae Omakase",
+      "Seasonal Fish",
+      "Intimate Counter"
     ]
   },
   {
@@ -714,6 +994,12 @@
         "type": "michelin",
         "stars": 1
       }
+    ],
+    "tags": [
+      "Korean Tasting Menu",
+      "Craft Cocktails",
+      "Date Night",
+      "Stylish Decor"
     ]
   },
   {
@@ -727,6 +1013,12 @@
         "type": "michelin",
         "stars": 1
       }
+    ],
+    "tags": [
+      "Wood-Fired Mexican",
+      "Tacos",
+      "Mezcal Cocktails",
+      "Lively Atmosphere"
     ]
   },
   {
@@ -740,6 +1032,12 @@
         "type": "michelin",
         "stars": 1
       }
+    ],
+    "tags": [
+      "French-Japanese Tasting Menu",
+      "Theatrical Open Kitchen",
+      "Romantic",
+      "Special Occasion"
     ]
   },
   {
@@ -753,6 +1051,12 @@
         "type": "michelin",
         "stars": 1
       }
+    ],
+    "tags": [
+      "Handmade Pasta",
+      "Wine List",
+      "Regional Italian",
+      "Great Service"
     ]
   },
   {
@@ -771,6 +1075,12 @@
         "category": "Best Chef: New York State",
         "year": 2025
       }
+    ],
+    "tags": [
+      "South Indian Cuisine",
+      "Dosa",
+      "Bold Spices",
+      "Great Service"
     ]
   },
   {
@@ -784,6 +1094,11 @@
         "type": "michelin",
         "stars": 1
       }
+    ],
+    "tags": [
+      "Edomae Sushi",
+      "Sake List",
+      "Intimate Counter"
     ]
   },
   {
@@ -797,6 +1112,12 @@
         "type": "michelin",
         "stars": 1
       }
+    ],
+    "tags": [
+      "Israeli Small Plates",
+      "Chef's Counter",
+      "Seasonal Menu",
+      "Lively Vibe"
     ]
   },
   {
@@ -810,6 +1131,12 @@
         "type": "michelin",
         "stars": 1
       }
+    ],
+    "tags": [
+      "Omakase",
+      "Uni Highlight",
+      "Sake Pairing",
+      "Intimate Atmosphere"
     ]
   },
   {
@@ -823,6 +1150,11 @@
         "type": "michelin",
         "stars": 1
       }
+    ],
+    "tags": [
+      "Omakase",
+      "Sushi Counter",
+      "Sake Pairing"
     ]
   },
   {
@@ -836,6 +1168,11 @@
         "type": "michelin",
         "stars": 1
       }
+    ],
+    "tags": [
+      "Tempura Omakase",
+      "Chef's Counter",
+      "Date Night"
     ]
   },
   {
@@ -849,6 +1186,12 @@
         "type": "michelin",
         "stars": 1
       }
+    ],
+    "tags": [
+      "Wine List",
+      "Small Plates",
+      "Cozy Ambience",
+      "Casual Vibe"
     ]
   },
   {
@@ -862,6 +1205,12 @@
         "type": "michelin",
         "stars": 1
       }
+    ],
+    "tags": [
+      "Yakitori",
+      "Binchotan Grill",
+      "Date Night",
+      "Intimate Ambience"
     ]
   },
   {
@@ -875,6 +1224,11 @@
         "type": "michelin",
         "stars": 1
       }
+    ],
+    "tags": [
+      "Handmade Pasta",
+      "Great Service",
+      "Elegant Atmosphere"
     ]
   },
   {
@@ -888,6 +1242,12 @@
         "type": "michelin",
         "stars": 1
       }
+    ],
+    "tags": [
+      "Kaiseki Tasting Menu",
+      "Intimate Counter",
+      "Sake Menu",
+      "Special Occasion"
     ]
   },
   {
@@ -901,6 +1261,11 @@
         "type": "michelin",
         "stars": 1
       }
+    ],
+    "tags": [
+      "Asian-American Fusion",
+      "Date Night",
+      "Cozy Ambience"
     ]
   },
   {
@@ -914,6 +1279,12 @@
         "type": "michelin",
         "stars": 1
       }
+    ],
+    "tags": [
+      "Kaiseki Tasting Menu",
+      "Chef's Counter",
+      "Rare Seasonal Ingredients",
+      "Attentive Service"
     ]
   },
   {
@@ -927,6 +1298,12 @@
         "type": "michelin",
         "stars": 1
       }
+    ],
+    "tags": [
+      "Chinese Tasting Menu",
+      "Signature Black Cod",
+      "Open Kitchen",
+      "Elegant Atmosphere"
     ]
   },
   {
@@ -940,6 +1317,12 @@
         "type": "michelin",
         "stars": 1
       }
+    ],
+    "tags": [
+      "Traditional Omakase",
+      "Premium Tuna",
+      "Wine List",
+      "Intimate Atmosphere"
     ]
   },
   {
@@ -953,6 +1336,11 @@
         "type": "michelin",
         "stars": 3
       }
+    ],
+    "tags": [
+      "Tasting Menu",
+      "Wine Pairings",
+      "Meticulous Service"
     ]
   },
   {
@@ -966,6 +1354,12 @@
         "type": "michelin",
         "stars": 2
       }
+    ],
+    "tags": [
+      "Tasting Menu",
+      "Theatrical Presentation",
+      "Wine Pairing",
+      "Chef's Table"
     ]
   },
   {
@@ -979,6 +1373,11 @@
         "type": "michelin",
         "stars": 2
       }
+    ],
+    "tags": [
+      "Tasting Menu",
+      "Elegant Ambience",
+      "Wagyu"
     ]
   },
   {
@@ -997,6 +1396,10 @@
         "category": "Best Chef: Great Lakes",
         "year": 2023
       }
+    ],
+    "tags": [
+      "Pastries",
+      "Filipino Fare"
     ]
   },
   {
@@ -1015,6 +1418,12 @@
         "category": "Best Chef: Great Lakes",
         "year": 2025
       }
+    ],
+    "tags": [
+      "Tasting Menu",
+      "Wine Pairing",
+      "Intimate Ambience",
+      "Exceptional Service"
     ]
   },
   {
@@ -1028,6 +1437,11 @@
         "type": "michelin",
         "stars": 1
       }
+    ],
+    "tags": [
+      "Creative American",
+      "Stylish Ambience",
+      "Date Night"
     ]
   },
   {
@@ -1041,6 +1455,11 @@
         "type": "michelin",
         "stars": 1
       }
+    ],
+    "tags": [
+      "Chef's Counter",
+      "Tasting Menu",
+      "Mexican Inspired"
     ]
   },
   {
@@ -1054,6 +1473,12 @@
         "type": "michelin",
         "stars": 1
       }
+    ],
+    "tags": [
+      "Tasting Menu",
+      "BYOB",
+      "Open Kitchen",
+      "Fun Atmosphere"
     ]
   },
   {
@@ -1067,6 +1492,11 @@
         "type": "michelin",
         "stars": 1
       }
+    ],
+    "tags": [
+      "Tasting Menu",
+      "Wine Pairing",
+      "Open Kitchen"
     ]
   },
   {
@@ -1080,6 +1510,12 @@
         "type": "michelin",
         "stars": 1
       }
+    ],
+    "tags": [
+      "Art Gallery Setting",
+      "Creative Cuisine",
+      "Attentive Service",
+      "Date Night"
     ]
   },
   {
@@ -1098,6 +1534,12 @@
         "category": "Best Chef: Great Lakes",
         "year": 2026
       }
+    ],
+    "tags": [
+      "Tasting Menu",
+      "Seasonal Produce",
+      "Wine Pairing",
+      "Fire Pit"
     ]
   },
   {
@@ -1111,6 +1553,11 @@
         "type": "michelin",
         "stars": 1
       }
+    ],
+    "tags": [
+      "Middle Eastern Cuisine",
+      "Hummus",
+      "Sharing Menu"
     ]
   },
   {
@@ -1124,6 +1571,11 @@
         "type": "michelin",
         "stars": 1
       }
+    ],
+    "tags": [
+      "Indian Tasting Menu",
+      "Wine Pairing",
+      "Craft Cocktails"
     ]
   },
   {
@@ -1137,6 +1589,10 @@
         "type": "michelin",
         "stars": 1
       }
+    ],
+    "tags": [
+      "Omakase",
+      "Seasonal Sushi"
     ]
   },
   {
@@ -1150,6 +1606,11 @@
         "type": "michelin",
         "stars": 1
       }
+    ],
+    "tags": [
+      "Beer Pairings",
+      "Brewery",
+      "Date Night"
     ]
   },
   {
@@ -1163,6 +1624,11 @@
         "type": "michelin",
         "stars": 1
       }
+    ],
+    "tags": [
+      "Themed Tasting Menu",
+      "Wine Pairing",
+      "Creative Presentation"
     ]
   },
   {
@@ -1176,6 +1642,11 @@
         "type": "michelin",
         "stars": 1
       }
+    ],
+    "tags": [
+      "Tasting Menu",
+      "BYOB",
+      "Open Kitchen"
     ]
   },
   {
@@ -1189,6 +1660,11 @@
         "type": "michelin",
         "stars": 1
       }
+    ],
+    "tags": [
+      "Tasting Menu",
+      "Wine Pairing",
+      "Intimate Ambience"
     ]
   },
   {
@@ -1202,6 +1678,11 @@
         "type": "michelin",
         "stars": 1
       }
+    ],
+    "tags": [
+      "Mexican Cuisine",
+      "Mole",
+      "Wine Pairing"
     ]
   },
   {
@@ -1215,6 +1696,11 @@
         "type": "michelin",
         "stars": 2
       }
+    ],
+    "tags": [
+      "Tasting Menu",
+      "Extensive Wine List",
+      "White-Glove Service"
     ]
   },
   {
@@ -1228,6 +1714,11 @@
         "type": "michelin",
         "stars": 2
       }
+    ],
+    "tags": [
+      "Tasting Menu",
+      "Chef's Counter",
+      "Wine Pairing"
     ]
   },
   {
@@ -1241,6 +1732,11 @@
         "type": "michelin",
         "stars": 2
       }
+    ],
+    "tags": [
+      "Tasting Menu",
+      "Molecular Gastronomy",
+      "Intimate Setting"
     ]
   },
   {
@@ -1259,6 +1755,11 @@
         "category": "Outstanding Chef",
         "year": 2024
       }
+    ],
+    "tags": [
+      "Middle Eastern Cuisine",
+      "Hummus",
+      "Wine List"
     ]
   },
   {
@@ -1272,6 +1773,10 @@
         "type": "michelin",
         "stars": 1
       }
+    ],
+    "tags": [
+      "Tasting Menu",
+      "Craft Cocktails"
     ]
   },
   {
@@ -1290,6 +1795,12 @@
         "category": "Best Chef: Mid-Atlantic",
         "year": 2025
       }
+    ],
+    "tags": [
+      "Peruvian Cuisine",
+      "Ceviche",
+      "Craft Cocktails",
+      "Date Night"
     ]
   },
   {
@@ -1303,6 +1814,11 @@
         "type": "michelin",
         "stars": 1
       }
+    ],
+    "tags": [
+      "Wood-Fired Cooking",
+      "Wine List",
+      "Warm Hospitality"
     ]
   },
   {
@@ -1316,6 +1832,11 @@
         "type": "michelin",
         "stars": 1
       }
+    ],
+    "tags": [
+      "Colombian Tasting Menu",
+      "Signature Wagyu Tartare",
+      "Warm Ambience"
     ]
   },
   {
@@ -1329,6 +1850,11 @@
         "type": "michelin",
         "stars": 1
       }
+    ],
+    "tags": [
+      "Italian Tasting Menu",
+      "Romantic Ambience",
+      "Attentive Service"
     ]
   },
   {
@@ -1342,6 +1868,11 @@
         "type": "michelin",
         "stars": 1
       }
+    ],
+    "tags": [
+      "Seafood & Steak",
+      "Tasting Menu",
+      "Great Cocktails"
     ]
   },
   {
@@ -1355,6 +1886,11 @@
         "type": "michelin",
         "stars": 1
       }
+    ],
+    "tags": [
+      "Tasting Menu",
+      "Wine Pairings",
+      "Date Night"
     ]
   },
   {
@@ -1368,6 +1904,11 @@
         "type": "michelin",
         "stars": 1
       }
+    ],
+    "tags": [
+      "Italian Tasting Menu",
+      "Chef's Counter",
+      "Wine Pairings"
     ]
   },
   {
@@ -1381,6 +1922,11 @@
         "type": "michelin",
         "stars": 1
       }
+    ],
+    "tags": [
+      "Vegetarian Tasting Menu",
+      "Latin-Inspired Cuisine",
+      "Elegant Ambience"
     ]
   },
   {
@@ -1394,6 +1940,11 @@
         "type": "michelin",
         "stars": 1
       }
+    ],
+    "tags": [
+      "Omakase",
+      "Intimate Chef's Counter",
+      "Sake Pairings"
     ]
   },
   {
@@ -1412,6 +1963,11 @@
         "category": "Outstanding Chef",
         "year": 2023
       }
+    ],
+    "tags": [
+      "Vegetarian Tasting Menu",
+      "Sustainable Sourcing",
+      "Chef's Counter"
     ]
   },
   {
@@ -1425,6 +1981,11 @@
         "type": "michelin",
         "stars": 1
       }
+    ],
+    "tags": [
+      "Tasting Menu",
+      "Chef's Counter",
+      "Playful Fine Dining"
     ]
   },
   {
@@ -1438,6 +1999,11 @@
         "type": "michelin",
         "stars": 1
       }
+    ],
+    "tags": [
+      "Indian Tasting Menu",
+      "Romantic Ambience",
+      "Elegant Presentation"
     ]
   },
   {
@@ -1451,6 +2017,11 @@
         "type": "michelin",
         "stars": 1
       }
+    ],
+    "tags": [
+      "Tasting Menu",
+      "Great For Groups",
+      "Warm Service"
     ]
   },
   {
@@ -1464,6 +2035,11 @@
         "type": "michelin",
         "stars": 1
       }
+    ],
+    "tags": [
+      "Small Plates",
+      "Cozy Ambience",
+      "Casual Upscale Vibe"
     ]
   },
   {
@@ -1477,6 +2053,11 @@
         "type": "michelin",
         "stars": 1
       }
+    ],
+    "tags": [
+      "Omakase",
+      "Sushi Counter",
+      "Extensive Wine List"
     ]
   },
   {
@@ -1490,6 +2071,11 @@
         "type": "michelin",
         "stars": 1
       }
+    ],
+    "tags": [
+      "Spanish Cuisine",
+      "Wine Pairings",
+      "Date Night"
     ]
   },
   {
@@ -1503,6 +2089,10 @@
         "type": "michelin",
         "stars": 1
       }
+    ],
+    "tags": [
+      "Tasting Menu",
+      "Special Occasion Dining"
     ]
   },
   {
@@ -1516,6 +2106,11 @@
         "type": "michelin",
         "stars": 1
       }
+    ],
+    "tags": [
+      "New American Tasting Menu",
+      "Extensive Wine List",
+      "Attentive Service"
     ]
   },
   {
@@ -1529,6 +2124,11 @@
         "type": "michelin",
         "stars": 1
       }
+    ],
+    "tags": [
+      "Omakase",
+      "Chef's Table",
+      "Sake Pairings"
     ]
   },
   {
@@ -1542,6 +2142,11 @@
         "type": "michelin",
         "stars": 1
       }
+    ],
+    "tags": [
+      "Tasting Menu",
+      "Wine Pairings",
+      "Stylish Ambience"
     ]
   },
   {
@@ -1555,6 +2160,11 @@
         "type": "michelin",
         "stars": 1
       }
+    ],
+    "tags": [
+      "Edomae Omakase",
+      "Intimate Counter",
+      "Wine Pairings"
     ]
   },
   {
@@ -1568,6 +2178,11 @@
         "type": "michelin",
         "stars": 1
       }
+    ],
+    "tags": [
+      "Omakase",
+      "Dry-Aged Fish",
+      "Wine & Sake Pairings"
     ]
   },
   {
@@ -1581,6 +2196,11 @@
         "type": "michelin",
         "stars": 1
       }
+    ],
+    "tags": [
+      "Omakase",
+      "Personalized Experience",
+      "Wine Program"
     ]
   },
   {
@@ -1594,6 +2214,11 @@
         "type": "michelin",
         "stars": 1
       }
+    ],
+    "tags": [
+      "Seasonal New American",
+      "Cozy Ambience",
+      "Romantic Date Night"
     ]
   },
   {
@@ -1607,6 +2232,11 @@
         "type": "michelin",
         "stars": 3
       }
+    ],
+    "tags": [
+      "Tasting Menu",
+      "Extensive Wine Pairing",
+      "Chef Interaction"
     ]
   },
   {
@@ -1620,6 +2250,11 @@
         "type": "michelin",
         "stars": 3
       }
+    ],
+    "tags": [
+      "Tasting Menu",
+      "Asian-Influenced Cuisine",
+      "Zen Ambience"
     ]
   },
   {
@@ -1638,6 +2273,12 @@
         "category": "Outstanding Chef",
         "year": 2026
       }
+    ],
+    "tags": [
+      "Tasting Menu",
+      "Wine Pairings",
+      "Exceptional Service",
+      "Artful Plating"
     ]
   },
   {
@@ -1651,6 +2292,12 @@
         "type": "michelin",
         "stars": 3
       }
+    ],
+    "tags": [
+      "Tasting Menu",
+      "Impeccable Service",
+      "Kitchen Tour",
+      "Special Occasion"
     ]
   },
   {
@@ -1664,6 +2311,12 @@
         "type": "michelin",
         "stars": 3
       }
+    ],
+    "tags": [
+      "Tasting Menu",
+      "Farm Tour",
+      "Rooftop Views",
+      "Exceptional Hospitality"
     ]
   },
   {
@@ -1677,6 +2330,12 @@
         "type": "michelin",
         "stars": 2
       }
+    ],
+    "tags": [
+      "Handmade Pasta",
+      "Wine Pairing",
+      "Romantic Atmosphere",
+      "Special Occasion"
     ]
   },
   {
@@ -1690,6 +2349,12 @@
         "type": "michelin",
         "stars": 2
       }
+    ],
+    "tags": [
+      "Wood-Fire Cooking",
+      "Chef's Counter",
+      "Tasting Menu",
+      "Special Occasion"
     ]
   },
   {
@@ -1703,6 +2368,11 @@
         "type": "michelin",
         "stars": 2
       }
+    ],
+    "tags": [
+      "Modern Mexican Tasting Menu",
+      "Wine Pairing",
+      "Elegant Ambience"
     ]
   },
   {
@@ -1716,6 +2386,12 @@
         "type": "michelin",
         "stars": 2
       }
+    ],
+    "tags": [
+      "Tasting Menu",
+      "Signature Egg Dish",
+      "Wine Pairing",
+      "Attentive Service"
     ]
   },
   {
@@ -1729,6 +2405,11 @@
         "type": "michelin",
         "stars": 2
       }
+    ],
+    "tags": [
+      "Ocean Views",
+      "Fresh Seafood",
+      "Romantic Getaway"
     ]
   },
   {
@@ -1742,6 +2423,12 @@
         "type": "michelin",
         "stars": 2
       }
+    ],
+    "tags": [
+      "Tasting Menu",
+      "Industrial Ambience",
+      "Attentive Service",
+      "Wine List"
     ]
   },
   {
@@ -1755,6 +2442,12 @@
         "type": "michelin",
         "stars": 2
       }
+    ],
+    "tags": [
+      "Tasting Menu",
+      "Wine Pairing",
+      "Cozy Atmosphere",
+      "Special Occasion"
     ]
   },
   {
@@ -1768,6 +2461,11 @@
         "type": "michelin",
         "stars": 2
       }
+    ],
+    "tags": [
+      "Wood-Fired Cuisine",
+      "Wine Pairing",
+      "Relaxed Elegant Atmosphere"
     ]
   },
   {
@@ -1781,6 +2479,12 @@
         "type": "michelin",
         "stars": 2
       }
+    ],
+    "tags": [
+      "Tasting Menu",
+      "New Nordic Cuisine",
+      "Intimate Ambience",
+      "Wine Pairing"
     ]
   },
   {
@@ -1794,6 +2498,11 @@
         "type": "michelin",
         "stars": 2
       }
+    ],
+    "tags": [
+      "Tasting Menu",
+      "Wine Pairing",
+      "Intimate Dining Room"
     ]
   },
   {
@@ -1807,6 +2516,12 @@
         "type": "michelin",
         "stars": 1
       }
+    ],
+    "tags": [
+      "Prix Fixe Menu",
+      "Japanese Milk Bread",
+      "Cozy Terrace",
+      "Attentive Service"
     ]
   },
   {
@@ -1820,6 +2535,12 @@
         "type": "michelin",
         "stars": 1
       }
+    ],
+    "tags": [
+      "Wood-Fire Cooking",
+      "Seafood",
+      "Bay Views",
+      "Attentive Service"
     ]
   },
   {
@@ -1833,6 +2554,12 @@
         "type": "michelin",
         "stars": 1
       }
+    ],
+    "tags": [
+      "Neapolitan Pizza",
+      "Housemade Pasta",
+      "Lively Atmosphere",
+      "Wine List"
     ]
   },
   {
@@ -1846,6 +2573,11 @@
         "type": "michelin",
         "stars": 1
       }
+    ],
+    "tags": [
+      "South Indian Cuisine",
+      "Inventive Flavors",
+      "Stylish Ambience"
     ]
   },
   {
@@ -1859,6 +2591,12 @@
         "type": "michelin",
         "stars": 1
       }
+    ],
+    "tags": [
+      "Mediterranean Cuisine",
+      "Date Night",
+      "Craft Cocktails",
+      "Open Kitchen"
     ]
   },
   {
@@ -1877,6 +2615,11 @@
         "category": "Best Chef: California",
         "year": 2022
       }
+    ],
+    "tags": [
+      "Modern Cantonese Cuisine",
+      "Scallion Milk Bread",
+      "High-Style Decor"
     ]
   },
   {
@@ -1890,6 +2633,11 @@
         "type": "michelin",
         "stars": 1
       }
+    ],
+    "tags": [
+      "Dim Sum-Style Service",
+      "High-Energy Atmosphere",
+      "Small Plates"
     ]
   },
   {
@@ -1903,6 +2651,11 @@
         "type": "michelin",
         "stars": 1
       }
+    ],
+    "tags": [
+      "Modern Thai Cuisine",
+      "Wine List",
+      "Cozy Casual Vibe"
     ]
   },
   {
@@ -1916,6 +2669,12 @@
         "type": "michelin",
         "stars": 1
       }
+    ],
+    "tags": [
+      "Brunch",
+      "Chef's Adventure Menu",
+      "Fun Vibrant Atmosphere",
+      "Attentive Service"
     ]
   },
   {
@@ -1929,6 +2688,12 @@
         "type": "michelin",
         "stars": 1
       }
+    ],
+    "tags": [
+      "Izakaya Fare",
+      "Tasting Menu",
+      "Buzzy Atmosphere",
+      "Attentive Service"
     ]
   },
   {
@@ -1942,6 +2707,12 @@
         "type": "michelin",
         "stars": 3
       }
+    ],
+    "tags": [
+      "Tasting Menu",
+      "Chef's Counter",
+      "Wine Pairing",
+      "Immersive Experience"
     ]
   },
   {
@@ -1955,6 +2726,11 @@
         "type": "michelin",
         "stars": 3
       }
+    ],
+    "tags": [
+      "Seafood Tasting Menu",
+      "Wine Pairing",
+      "Impeccable Service"
     ]
   },
   {
@@ -1968,6 +2744,12 @@
         "type": "michelin",
         "stars": 2
       }
+    ],
+    "tags": [
+      "Italian Cuisine",
+      "Handmade Pasta",
+      "Wine List",
+      "Date Night"
     ]
   },
   {
@@ -1981,6 +2763,10 @@
         "type": "michelin",
         "stars": 1
       }
+    ],
+    "tags": [
+      "Seafood-Forward Menu",
+      "Craft Cocktail Bar"
     ]
   },
   {
@@ -1994,6 +2780,11 @@
         "type": "michelin",
         "stars": 1
       }
+    ],
+    "tags": [
+      "Ceviche",
+      "Fresh Seafood",
+      "Casual Food Hall"
     ]
   },
   {
@@ -2007,6 +2798,12 @@
         "type": "michelin",
         "stars": 1
       }
+    ],
+    "tags": [
+      "Korean Tasting Menu",
+      "Chef's Counter",
+      "Wine Pairing",
+      "Intimate Setting"
     ]
   },
   {
@@ -2020,6 +2817,11 @@
         "type": "michelin",
         "stars": 1
       }
+    ],
+    "tags": [
+      "Kaiseki Tasting Menu",
+      "Sake Pairing",
+      "Cozy Ambience"
     ]
   },
   {
@@ -2033,6 +2835,11 @@
         "type": "michelin",
         "stars": 1
       }
+    ],
+    "tags": [
+      "Tasting Menu",
+      "Open Kitchen",
+      "Minimalist Setting"
     ]
   },
   {
@@ -2046,6 +2853,11 @@
         "type": "michelin",
         "stars": 1
       }
+    ],
+    "tags": [
+      "Omakase Sushi",
+      "Tea Pairing",
+      "Intimate Counter"
     ]
   },
   {
@@ -2059,6 +2871,11 @@
         "type": "michelin",
         "stars": 1
       }
+    ],
+    "tags": [
+      "Catalan Cuisine",
+      "Live Music",
+      "Historic Home Setting"
     ]
   },
   {
@@ -2072,6 +2889,10 @@
         "type": "michelin",
         "stars": 1
       }
+    ],
+    "tags": [
+      "Wood-Smoked Brisket",
+      "Casual Picnic Seating"
     ]
   },
   {
@@ -2085,6 +2906,12 @@
         "type": "michelin",
         "stars": 1
       }
+    ],
+    "tags": [
+      "French Cuisine",
+      "Tasting Menu",
+      "Date Night",
+      "Elegant Ambience"
     ]
   },
   {
@@ -2098,6 +2925,11 @@
         "type": "michelin",
         "stars": 1
       }
+    ],
+    "tags": [
+      "Mediterranean Tasting Menu",
+      "Craft Cocktails",
+      "Elegant Ambience"
     ]
   },
   {
@@ -2111,6 +2943,11 @@
         "type": "michelin",
         "stars": 1
       }
+    ],
+    "tags": [
+      "Indian Tasting Menu",
+      "Elaborate Décor",
+      "Craft Cocktails"
     ]
   },
   {
@@ -2124,6 +2961,11 @@
         "type": "michelin",
         "stars": 1
       }
+    ],
+    "tags": [
+      "Heirloom Corn Tasting Menu",
+      "Intimate Setting",
+      "Mexican Fine Dining"
     ]
   },
   {
@@ -2137,6 +2979,11 @@
         "type": "michelin",
         "stars": 2
       }
+    ],
+    "tags": [
+      "Tasting Menu",
+      "Chef's Counter",
+      "Elegant Ambience"
     ]
   },
   {
@@ -2150,6 +2997,11 @@
         "type": "michelin",
         "stars": 1
       }
+    ],
+    "tags": [
+      "Cuban-French Fusion",
+      "Tasting Menu",
+      "Attentive Service"
     ]
   },
   {
@@ -2163,6 +3015,11 @@
         "type": "michelin",
         "stars": 1
       }
+    ],
+    "tags": [
+      "Handmade Pasta",
+      "Tiramisu",
+      "Casual Vibe"
     ]
   },
   {
@@ -2176,6 +3033,11 @@
         "type": "michelin",
         "stars": 1
       }
+    ],
+    "tags": [
+      "Korean BBQ",
+      "Premium Wagyu",
+      "Tableside Grilling"
     ]
   },
   {
@@ -2189,6 +3051,11 @@
         "type": "michelin",
         "stars": 1
       }
+    ],
+    "tags": [
+      "Omakase",
+      "Sake Pairing",
+      "Hidden Gem"
     ]
   },
   {
@@ -2202,6 +3069,12 @@
         "type": "michelin",
         "stars": 1
       }
+    ],
+    "tags": [
+      "Molecular Gastronomy",
+      "Tasting Menu",
+      "Playful Presentation",
+      "River Views"
     ]
   },
   {
@@ -2215,6 +3088,11 @@
         "type": "michelin",
         "stars": 1
       }
+    ],
+    "tags": [
+      "Omakase",
+      "Hidden Entrance",
+      "Sake Pairing"
     ]
   },
   {
@@ -2228,6 +3106,11 @@
         "type": "michelin",
         "stars": 1
       }
+    ],
+    "tags": [
+      "Live Music",
+      "Craft Cocktails",
+      "Elegant Ambience"
     ]
   },
   {
@@ -2241,6 +3124,11 @@
         "type": "michelin",
         "stars": 1
       }
+    ],
+    "tags": [
+      "Tacos Al Pastor",
+      "Lively Vibe",
+      "Attentive Service"
     ]
   },
   {
@@ -2254,6 +3142,11 @@
         "type": "michelin",
         "stars": 1
       }
+    ],
+    "tags": [
+      "Kosher Fine Dining",
+      "Creative Tasting Menu",
+      "Attentive Service"
     ]
   },
   {
@@ -2267,6 +3160,11 @@
         "type": "michelin",
         "stars": 1
       }
+    ],
+    "tags": [
+      "Omakase",
+      "Intimate Counter Seating",
+      "Refined Ambience"
     ]
   },
   {
@@ -2280,6 +3178,11 @@
         "type": "michelin",
         "stars": 1
       }
+    ],
+    "tags": [
+      "Omakase",
+      "Japanese Fine Dining",
+      "Impeccable Service"
     ]
   },
   {
@@ -2293,6 +3196,12 @@
         "type": "michelin",
         "stars": 1
       }
+    ],
+    "tags": [
+      "Tasting Menu",
+      "Wine Pairing",
+      "Seasonal American Cuisine",
+      "Attentive Service"
     ]
   },
   {
@@ -2306,6 +3215,11 @@
         "type": "michelin",
         "stars": 1
       }
+    ],
+    "tags": [
+      "Classic Continental Cuisine",
+      "Elegant Ambience",
+      "Tableside Caesar"
     ]
   },
   {
@@ -2319,6 +3233,11 @@
         "type": "michelin",
         "stars": 1
       }
+    ],
+    "tags": [
+      "Tasting Menu",
+      "Wine Pairing",
+      "Intimate Setting"
     ]
   },
   {
@@ -2333,6 +3252,12 @@
         "category": "Best Chef: Great Lakes",
         "year": 2022
       }
+    ],
+    "tags": [
+      "Southern Comfort Food",
+      "Open Kitchen",
+      "Signature Short Rib",
+      "Craft Cocktails"
     ]
   },
   {
@@ -2347,6 +3272,12 @@
         "category": "Best Chef: New York State",
         "year": 2022
       }
+    ],
+    "tags": [
+      "Provincial Indian Cuisine",
+      "Creative Cocktails",
+      "Lively Atmosphere",
+      "Attentive Service"
     ]
   },
   {
@@ -2361,6 +3292,11 @@
         "category": "Best Chef: Texas",
         "year": 2023
       }
+    ],
+    "tags": [
+      "Thai Street Food",
+      "Spicy Flavors",
+      "Bustling Atmosphere"
     ]
   },
   {
@@ -2375,6 +3311,11 @@
         "category": "Best Chef: California",
         "year": 2023
       }
+    ],
+    "tags": [
+      "Thai Cuisine",
+      "Signature Fried Chicken",
+      "Lively Atmosphere"
     ]
   },
   {
@@ -2389,6 +3330,11 @@
         "category": "Best Chef: Southeast",
         "year": 2023
       }
+    ],
+    "tags": [
+      "Wild Game Dishes",
+      "Cozy Patio",
+      "Attentive Service"
     ]
   },
   {
@@ -2403,6 +3349,11 @@
         "category": "Best Chef: California",
         "year": 2024
       }
+    ],
+    "tags": [
+      "Filipino Cuisine",
+      "Cozy Casual Vibe",
+      "Signature Crispy Pork"
     ]
   },
   {
@@ -2417,6 +3368,11 @@
         "category": "Best Chef: California",
         "year": 2025
       }
+    ],
+    "tags": [
+      "Tasting Menu",
+      "Taiwanese Inspired",
+      "Impeccable Service"
     ]
   },
   {
@@ -2431,6 +3387,11 @@
         "category": "Best Chef: Texas",
         "year": 2025
       }
+    ],
+    "tags": [
+      "Chef Driven Menu",
+      "Date Night",
+      "Attentive Service"
     ]
   },
   {
@@ -2445,6 +3406,12 @@
         "category": "Best New Restaurant",
         "year": 2026
       }
+    ],
+    "tags": [
+      "Wine List",
+      "Chinese Fusion",
+      "Cozy Atmosphere",
+      "Signature Short Rib"
     ]
   },
   {
@@ -2459,6 +3426,11 @@
         "category": "Best Chef: California",
         "year": 2026
       }
+    ],
+    "tags": [
+      "Tasting Menu",
+      "Creative Fine Dining",
+      "Theatrical Ambience"
     ]
   },
   {
@@ -2473,6 +3445,12 @@
         "category": "Best Chef: Texas",
         "year": 2026
       }
+    ],
+    "tags": [
+      "Signature Fried Chicken",
+      "Date Night",
+      "Chef's Counter",
+      "Exceptional Hospitality"
     ]
   }
 ]

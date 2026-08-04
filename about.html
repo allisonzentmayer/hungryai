@@ -4,6 +4,9 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>About — HungryPig</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Lobster&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
@@ -42,25 +45,30 @@
     </a>
   </header>
 
+  <div class="diner-stripe" aria-hidden="true"></div>
+
   <main class="about-hero">
-    <svg class="mascot-pig" viewBox="0 0 120 140" aria-hidden="true">
-      <ellipse cx="40" cy="26" rx="12" ry="14" fill="#f6a8c0"/>
-      <ellipse cx="80" cy="26" rx="12" ry="14" fill="#f6a8c0"/>
-      <ellipse cx="40" cy="28" rx="6" ry="7" fill="#e37da0"/>
-      <ellipse cx="80" cy="28" rx="6" ry="7" fill="#e37da0"/>
-      <path d="M104 92q14-4 8-16" stroke="#f6a8c0" stroke-width="6" fill="none" stroke-linecap="round"/>
-      <ellipse cx="60" cy="98" rx="42" ry="34" fill="#f6a8c0"/>
-      <rect x="34" y="122" width="15" height="16" rx="7" fill="#f6a8c0"/>
-      <rect x="71" y="122" width="15" height="16" rx="7" fill="#f6a8c0"/>
-      <ellipse cx="60" cy="55" rx="34" ry="30" fill="#f9c4d6"/>
-      <ellipse cx="34" cy="58" rx="6" ry="4" fill="#f6a8c0" opacity="0.6"/>
-      <ellipse cx="86" cy="58" rx="6" ry="4" fill="#f6a8c0" opacity="0.6"/>
-      <circle cx="46" cy="48" r="3" fill="#3a2233"/>
-      <circle cx="74" cy="48" r="3" fill="#3a2233"/>
-      <ellipse cx="60" cy="63" rx="15" ry="11" fill="#f291b3"/>
-      <circle cx="54" cy="63" r="2.6" fill="#b84b72"/>
-      <circle cx="66" cy="63" r="2.6" fill="#b84b72"/>
-    </svg>
+    <div class="mascot-wrap">
+      <span class="oink-bubble" aria-hidden="true">Oink!</span>
+      <svg class="mascot-pig" viewBox="0 0 120 140" aria-hidden="true">
+        <ellipse cx="40" cy="26" rx="12" ry="14" fill="#f6a8c0"/>
+        <ellipse cx="80" cy="26" rx="12" ry="14" fill="#f6a8c0"/>
+        <ellipse cx="40" cy="28" rx="6" ry="7" fill="#e37da0"/>
+        <ellipse cx="80" cy="28" rx="6" ry="7" fill="#e37da0"/>
+        <path d="M104 92q14-4 8-16" stroke="#f6a8c0" stroke-width="6" fill="none" stroke-linecap="round"/>
+        <ellipse cx="60" cy="98" rx="42" ry="34" fill="#f6a8c0"/>
+        <rect x="34" y="122" width="15" height="16" rx="7" fill="#f6a8c0"/>
+        <rect x="71" y="122" width="15" height="16" rx="7" fill="#f6a8c0"/>
+        <ellipse cx="60" cy="55" rx="34" ry="30" fill="#f9c4d6"/>
+        <ellipse cx="34" cy="58" rx="6" ry="4" fill="#f6a8c0" opacity="0.6"/>
+        <ellipse cx="86" cy="58" rx="6" ry="4" fill="#f6a8c0" opacity="0.6"/>
+        <circle cx="46" cy="48" r="3" fill="#3a2233"/>
+        <circle cx="74" cy="48" r="3" fill="#3a2233"/>
+        <ellipse cx="60" cy="63" rx="15" ry="11" fill="#f291b3"/>
+        <circle cx="54" cy="63" r="2.6" fill="#b84b72"/>
+        <circle cx="66" cy="63" r="2.6" fill="#b84b72"/>
+      </svg>
+    </div>
     <h2>Hi, I'm the HungryPig.</h2>
     <p>
       HungryPig finds genuinely good, open-now restaurants near you — ranked
@@ -79,5 +87,7 @@
   <footer class="site-footer">
     <a href="privacy.html">Privacy Policy</a>
   </footer>
+
+  <script src="mascot-oink.js"></script>
 </body>
 </html>
