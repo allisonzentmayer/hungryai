@@ -5,6 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>HungryPig — good food, fast, near you</title>
   <meta name="description" content="Find genuinely good, open-now restaurants near your current location — ranked to surface real quality, not just review volume." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Lobster&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="style.css" />
   <!--
     AdSense loader — once your AdSense account is approved
@@ -56,6 +59,8 @@
     </a>
   </header>
 
+  <div class="diner-stripe" aria-hidden="true"></div>
+
   <main class="layout">
     <section class="controls" aria-label="Search filters">
       <div class="control-row">
@@ -71,19 +76,6 @@
         </div>
       </div>
 
-      <div class="control-row">
-        <label for="minRating">Minimum rating</label>
-        <div class="select-wrap">
-          <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.86L12 17.77l-6.18 3.23L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
-          <select id="minRating">
-            <option value="0">Any</option>
-            <option value="3.5">3.5+</option>
-            <option value="4" selected>4.0+</option>
-            <option value="4.5">4.5+</option>
-          </select>
-        </div>
-      </div>
-
       <div class="control-row checkbox-row">
         <input type="checkbox" id="openNow" checked />
         <label for="openNow">Open now</label>
@@ -91,6 +83,10 @@
 
       <button id="searchBtn">Find good food near me</button>
       <button id="enableLocationBtn" class="secondary-btn" type="button" hidden>Enable location access</button>
+      <button id="chooseForMeBtn" class="secondary-btn" type="button">
+        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" width="16" height="16"><circle cx="12" cy="12" r="10"/><circle cx="8.5" cy="9" r="1.4" fill="#fff"/><circle cx="15.5" cy="9" r="1.4" fill="#fff"/><circle cx="9" cy="15" r="1.2" fill="#fff"/><circle cx="15" cy="15" r="1.2" fill="#fff"/><circle cx="12" cy="12" r="1.2" fill="#fff"/></svg>
+        Choose for me
+      </button>
 
       <div class="control-row zip-row">
         <label for="zipInput">Or search by zip code</label>
@@ -161,6 +157,7 @@
     </section>
   </main>
 
+  <script src="mascot-oink.js"></script>
   <script src="app.js"></script>
   <!--
     Replace YOUR_CLIENT_SIDE_KEY below with the restricted (HTTP-referrer-locked)
