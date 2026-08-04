@@ -55,10 +55,6 @@ body {
   flex-shrink: 0;
 }
 .topbar .cta-btn { justify-self: end; }
-@media (max-width: 900px) {
-  .topbar { grid-template-columns: 1fr; justify-items: center; text-align: center; }
-  .topbar .cta-btn { justify-self: center; }
-}
 .brand { display: flex; align-items: center; gap: 0.75rem; min-width: 0; }
 .brand-mark { width: 48px; height: 48px; flex-shrink: 0; }
 .brand-text { display: flex; align-items: baseline; gap: 0.6rem; flex-wrap: wrap; }
@@ -134,12 +130,6 @@ body {
   display: grid;
   grid-template-columns: 280px 1fr 340px;
   gap: 0;
-}
-@media (max-width: 900px) {
-  body { overflow: auto; }
-  .layout { grid-template-columns: 1fr; flex: none; }
-  .controls, .map, .results { height: auto; overflow: visible; }
-  .map { height: 60vh; }
 }
 
 /* ---------- sidebar controls ---------- */
@@ -521,3 +511,20 @@ body {
 .about-hero { max-width: 640px; margin: 0 auto; padding: 2.5rem 2rem; text-align: center; }
 .about-hero .mascot-pig { width: 140px; margin-bottom: 1rem; }
 .about-hero p { line-height: 1.6; color: var(--ink); }
+
+/* ---------- mobile ---------- */
+/* Kept as one block at the end of the file, on purpose: CSS resolves ties
+   between equal-specificity rules by source order, so any mobile override
+   declared earlier than the desktop rule it's meant to override (e.g. a
+   plain `.map { height: 100% }` further down the file) loses and gets
+   silently undone — which is exactly what was collapsing the map to zero
+   height on phones. */
+@media (max-width: 900px) {
+  .topbar { grid-template-columns: 1fr; justify-items: center; text-align: center; }
+  .topbar .cta-btn { justify-self: center; }
+
+  body { overflow: auto; }
+  .layout { grid-template-columns: 1fr; flex: none; }
+  .controls, .results { height: auto; overflow: visible; }
+  .map { height: 60vh; }
+}
