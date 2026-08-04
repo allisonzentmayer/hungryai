@@ -1,11 +1,19 @@
 // netlify/functions/search-restaurants.js
 //
 // This runs on the server, not in the browser — it's the only place
-// GOOGLE_PLACES_API_KEY is ever used, so it never gets exposed.
+// GOOGLE_PLACES_API_KEY / YELP_API_KEY are ever used, so they never get exposed.
 //
 // Frontend calls: /.netlify/functions/search-restaurants?lat=..&lng=..&radius=..&openNow=true&minPrice=1&maxPrice=4
 
 const PLACES_URL = "https://places.googleapis.com/v1/places:searchNearby";
+const YELP_URL = "https://api.yelp.com/v3/businesses/search";
+
+// If a place matches a Yelp listing but Yelp's own rating is below this,
+// treat it as a red flag (inflated/fake Google reviews) and drop it. Places
+// Yelp simply doesn't have a listing for are left alone — Yelp's coverage
+// isn't complete, so no match shouldn't be held against a place.
+const YELP_MIN_RATING = 3.5;
+const YELP_MATCH_RADIUS_METERS = 150;
 
 // Fields we ask Google for. Note: requesting "rating" / "userRatingCount"
 // pushes the call into a pricier SKU tier on Google's side — that's expected
@@ -30,6 +38,66 @@ function weightedScore(rating, reviewCount, neighborhoodAvg, minReviews = 30) {
   const v = reviewCount;
   const m = minReviews;
   return (v / (v + m)) * rating + (m / (v + m)) * neighborhoodAvg;
+}
+
+function normalizeName(name) {
+  return (name || "")
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}\s]/gu, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function metersBetween(a, b) {
+  const R = 6371000;
+  const toRad = (d) => (d * Math.PI) / 180;
+  const dLat = toRad(b.lat - a.lat);
+  const dLng = toRad(b.lng - a.lng);
+  const h =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(a.lat)) * Math.cos(toRad(b.lat)) * Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.asin(Math.sqrt(h));
+}
+
+// Yelp has no shared id with Google Places, so places are matched by
+// proximity + normalized-name overlap. Picks the closest plausible match
+// within YELP_MATCH_RADIUS_METERS, or null if nothing lines up.
+function matchYelpBusiness(place, yelpBusinesses) {
+  const placeName = normalizeName(place.name);
+  let best = null;
+  let bestDistance = Infinity;
+
+  for (const yb of yelpBusinesses) {
+    if (!yb.coordinates?.latitude || !yb.coordinates?.longitude) continue;
+    const distance = metersBetween(
+      { lat: place.lat, lng: place.lng },
+      { lat: yb.coordinates.latitude, lng: yb.coordinates.longitude }
+    );
+    if (distance > YELP_MATCH_RADIUS_METERS) continue;
+
+    const ybName = normalizeName(yb.name);
+    const namesOverlap = ybName === placeName || ybName.includes(placeName) || placeName.includes(ybName);
+    if (namesOverlap && distance < bestDistance) {
+      best = yb;
+      bestDistance = distance;
+    }
+  }
+  return best;
+}
+
+// Best-effort — a Yelp outage or missing/invalid key shouldn't break search,
+// it just means results fall back to Google-only ranking.
+async function fetchYelpBusinesses(lat, lng, radius, apiKey) {
+  if (!apiKey) return [];
+  try {
+    const url = `${YELP_URL}?latitude=${lat}&longitude=${lng}&radius=${Math.min(radius, 40000)}&categories=restaurants&limit=50&sort_by=best_match`;
+    const res = await fetch(url, { headers: { Authorization: `Bearer ${apiKey}` } });
+    if (!res.ok) return [];
+    const data = await res.json();
+    return data.businesses || [];
+  } catch (_err) {
+    return [];
+  }
 }
 
 exports.handler = async (event) => {
@@ -67,15 +135,20 @@ exports.handler = async (event) => {
       },
     };
 
-    const res = await fetch(PLACES_URL, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-Goog-Api-Key": apiKey,
-        "X-Goog-FieldMask": FIELD_MASK,
-      },
-      body: JSON.stringify(requestBody),
-    });
+    // Fired in parallel — Yelp doesn't depend on Google's response, and it's
+    // best-effort anyway (fetchYelpBusinesses swallows its own errors).
+    const [res, yelpBusinesses] = await Promise.all([
+      fetch(PLACES_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Goog-Api-Key": apiKey,
+          "X-Goog-FieldMask": FIELD_MASK,
+        },
+        body: JSON.stringify(requestBody),
+      }),
+      fetchYelpBusinesses(lat, lng, radius, process.env.YELP_API_KEY),
+    ]);
 
     if (!res.ok) {
       const errText = await res.text();
@@ -92,21 +165,40 @@ exports.handler = async (event) => {
 
     let results = places
       .filter((p) => p.rating && p.userRatingCount)
-      .map((p) => ({
-        id: p.id,
-        name: p.displayName?.text,
-        address: p.formattedAddress,
-        lat: p.location?.latitude,
-        lng: p.location?.longitude,
-        rating: p.rating,
-        reviewCount: p.userRatingCount,
-        priceLevel: p.priceLevel || null,
-        openNow: p.currentOpeningHours?.openNow ?? null,
-        cuisine: p.primaryTypeDisplayName?.text || null,
-        mapsUrl: p.googleMapsUri,
-        score: weightedScore(p.rating, p.userRatingCount, neighborhoodAvg),
-      }))
-      .filter((p) => p.rating >= minRating);
+      .map((p) => {
+        const base = {
+          id: p.id,
+          name: p.displayName?.text,
+          address: p.formattedAddress,
+          lat: p.location?.latitude,
+          lng: p.location?.longitude,
+          rating: p.rating,
+          reviewCount: p.userRatingCount,
+          priceLevel: p.priceLevel || null,
+          openNow: p.currentOpeningHours?.openNow ?? null,
+          cuisine: p.primaryTypeDisplayName?.text || null,
+          mapsUrl: p.googleMapsUri,
+          yelpRating: null,
+          yelpReviewCount: null,
+        };
+
+        const yelpMatch = yelpBusinesses.length ? matchYelpBusiness(base, yelpBusinesses) : null;
+        let score = weightedScore(p.rating, p.userRatingCount, neighborhoodAvg);
+        if (yelpMatch) {
+          base.yelpRating = yelpMatch.rating;
+          base.yelpReviewCount = yelpMatch.review_count;
+          // Average with Yelp's own weighted score so one platform's puffed-up
+          // ratings can't dominate the ranking on their own.
+          const yelpScore = weightedScore(yelpMatch.rating, yelpMatch.review_count, neighborhoodAvg);
+          score = (score + yelpScore) / 2;
+        }
+
+        return { ...base, score };
+      })
+      .filter((p) => p.rating >= minRating)
+      // A Yelp match with a mediocre Yelp rating is a red flag even if Google
+      // looks great; no Yelp listing at all isn't held against a place.
+      .filter((p) => p.yelpRating == null || p.yelpRating >= YELP_MIN_RATING);
 
     if (openNow) {
       results = results.filter((p) => p.openNow === true);
