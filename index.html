@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>HungryMap — good food, fast, near you</title>
+  <title>HungryPig — good food, fast, near you</title>
   <meta name="description" content="Find genuinely good, open-now restaurants near your current location — ranked to surface real quality, not just review volume." />
   <link rel="stylesheet" href="style.css" />
   <!--
@@ -20,30 +20,68 @@
 </head>
 <body>
   <header class="topbar">
-    <h1><a href="/">Hungry<span class="brand-accent">Map</span></a></h1>
-    <p class="tagline">Good food, fast, wherever you are.</p>
+    <div class="brand">
+      <svg class="brand-mark" viewBox="0 0 48 48" aria-hidden="true">
+        <circle cx="24" cy="24" r="24" fill="#fbd7e1"/>
+        <ellipse cx="24" cy="27" rx="14" ry="12" fill="#f6a8c0"/>
+        <ellipse cx="14" cy="14" rx="5" ry="6" fill="#f6a8c0"/>
+        <ellipse cx="34" cy="14" rx="5" ry="6" fill="#f6a8c0"/>
+        <ellipse cx="14" cy="15" rx="2.3" ry="3" fill="#e37da0"/>
+        <ellipse cx="34" cy="15" rx="2.3" ry="3" fill="#e37da0"/>
+        <ellipse cx="24" cy="30" rx="7" ry="5" fill="#f291b3"/>
+        <circle cx="21" cy="30" r="1.3" fill="#b84b72"/>
+        <circle cx="27" cy="30" r="1.3" fill="#b84b72"/>
+        <circle cx="18" cy="23" r="1.5" fill="#3a2233"/>
+        <circle cx="30" cy="23" r="1.5" fill="#3a2233"/>
+      </svg>
+      <div class="brand-text">
+        <h1><a href="/">HungryPig</a></h1>
+        <p class="tagline">
+          <svg class="sparkle" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 0l2.2 8.8L23 12l-8.8 2.2L12 24l-2.2-8.8L1 12l8.8-2.2L12 0z"/></svg>
+          Good food only.
+        </p>
+      </div>
+    </div>
+
+    <nav>
+      <ul class="main-nav">
+        <li><a href="/" aria-current="page">Map</a></li>
+        <li><a href="about.html">About</a></li>
+      </ul>
+    </nav>
+
+    <a id="ctaLocateBtn" class="cta-btn" href="/">
+      Find food near me
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+    </a>
   </header>
 
   <main class="layout">
     <section class="controls" aria-label="Search filters">
       <div class="control-row">
         <label for="radius">Search radius</label>
-        <select id="radius">
-          <option value="402">5 min walk (0.25 mi)</option>
-          <option value="805" selected>10 min walk (0.5 mi)</option>
-          <option value="1609">20 min walk (1 mi)</option>
-          <option value="4828">Short drive (3 mi)</option>
-        </select>
+        <div class="select-wrap">
+          <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="13" cy="4" r="2"/><path d="M15 8.5l-3.5 1L10 14l-3 6h2.2l2.3-4.6 1.8 1.6L14 22h2l-1.3-6.1 1.8-3.4L19 14v-2l-3.3-1.2z"/></svg>
+          <select id="radius">
+            <option value="402">5 min walk (0.25 mi)</option>
+            <option value="805" selected>10 min walk (0.5 mi)</option>
+            <option value="1609">20 min walk (1 mi)</option>
+            <option value="4828">Short drive (3 mi)</option>
+          </select>
+        </div>
       </div>
 
       <div class="control-row">
         <label for="minRating">Minimum rating</label>
-        <select id="minRating">
-          <option value="0">Any</option>
-          <option value="3.5">3.5+</option>
-          <option value="4" selected>4.0+</option>
-          <option value="4.5">4.5+</option>
-        </select>
+        <div class="select-wrap">
+          <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.86L12 17.77l-6.18 3.23L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+          <select id="minRating">
+            <option value="0">Any</option>
+            <option value="3.5">3.5+</option>
+            <option value="4" selected>4.0+</option>
+            <option value="4.5">4.5+</option>
+          </select>
+        </div>
       </div>
 
       <div class="control-row checkbox-row">
@@ -57,39 +95,71 @@
       <div class="control-row zip-row">
         <label for="zipInput">Or search by zip code</label>
         <div class="zip-input-group">
-          <input type="text" id="zipInput" inputmode="numeric" autocomplete="postal-code" placeholder="e.g. 10001" />
+          <div class="zip-input-wrap">
+            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2C7.6 2 4 5.6 4 10c0 5.4 7 11.5 7.3 11.7a1 1 0 001.4 0C13 21.5 20 15.4 20 10c0-4.4-3.6-8-8-8zm0 11a3 3 0 110-6 3 3 0 010 6z"/></svg>
+            <input type="text" id="zipInput" inputmode="numeric" autocomplete="postal-code" placeholder="e.g. 10001" />
+          </div>
           <button id="zipBtn" class="secondary-btn" type="button">Go</button>
         </div>
       </div>
 
       <p id="status" class="status" role="status"></p>
+
+      <div class="mascot-note">
+        <div class="speech-bubble">Let's find something good to eat!</div>
+        <div class="mascot-wrap">
+          <span class="oink-bubble" aria-hidden="true">Oink!</span>
+          <svg class="mascot-pig" viewBox="0 0 120 140" aria-hidden="true">
+            <ellipse cx="40" cy="26" rx="12" ry="14" fill="#f6a8c0"/>
+            <ellipse cx="80" cy="26" rx="12" ry="14" fill="#f6a8c0"/>
+            <ellipse cx="40" cy="28" rx="6" ry="7" fill="#e37da0"/>
+            <ellipse cx="80" cy="28" rx="6" ry="7" fill="#e37da0"/>
+            <path d="M104 92q14-4 8-16" stroke="#f6a8c0" stroke-width="6" fill="none" stroke-linecap="round"/>
+            <ellipse cx="60" cy="98" rx="42" ry="34" fill="#f6a8c0"/>
+            <rect x="34" y="122" width="15" height="16" rx="7" fill="#f6a8c0"/>
+            <rect x="71" y="122" width="15" height="16" rx="7" fill="#f6a8c0"/>
+            <ellipse cx="60" cy="55" rx="34" ry="30" fill="#f9c4d6"/>
+            <ellipse cx="34" cy="58" rx="6" ry="4" fill="#f6a8c0" opacity="0.6"/>
+            <ellipse cx="86" cy="58" rx="6" ry="4" fill="#f6a8c0" opacity="0.6"/>
+            <circle cx="46" cy="48" r="3" fill="#3a2233"/>
+            <circle cx="74" cy="48" r="3" fill="#3a2233"/>
+            <ellipse cx="60" cy="63" rx="15" ry="11" fill="#f291b3"/>
+            <circle cx="54" cy="63" r="2.6" fill="#b84b72"/>
+            <circle cx="66" cy="63" r="2.6" fill="#b84b72"/>
+          </svg>
+        </div>
+      </div>
     </section>
 
     <div id="map" class="map"></div>
 
     <section class="results" aria-label="Results">
       <ol id="resultsList" class="results-list"></ol>
+      <div class="results-footer">
+        <span id="resultsCount"></span>
+        <button id="clearFiltersBtn" type="button">Clear filters</button>
+      </div>
+
+      <div class="ad-slot" aria-label="Advertisement">
+        <!--
+          Uncomment once approved, filling in data-ad-client (your ca-pub-... id)
+          and data-ad-slot (this unit's id from AdSense > Ads > By ad unit):
+
+          <ins class="adsbygoogle"
+               style="display:block"
+               data-ad-client="ca-pub-XXXXXXXXXXXXXXXX"
+               data-ad-slot="0000000000"
+               data-ad-format="auto"
+               data-full-width-responsive="true"></ins>
+          <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
+        -->
+      </div>
+
+      <footer class="site-footer">
+        <a href="privacy.html">Privacy Policy</a>
+      </footer>
     </section>
   </main>
-
-  <div class="ad-slot" aria-label="Advertisement">
-    <!--
-      Uncomment once approved, filling in data-ad-client (your ca-pub-... id)
-      and data-ad-slot (this unit's id from AdSense > Ads > By ad unit):
-
-      <ins class="adsbygoogle"
-           style="display:block"
-           data-ad-client="ca-pub-XXXXXXXXXXXXXXXX"
-           data-ad-slot="0000000000"
-           data-ad-format="auto"
-           data-full-width-responsive="true"></ins>
-      <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
-    -->
-  </div>
-
-  <footer class="site-footer">
-    <a href="privacy.html">Privacy Policy</a>
-  </footer>
 
   <script src="app.js"></script>
   <!--
