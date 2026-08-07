@@ -66,6 +66,15 @@ function initMap() {
   document.getElementById("clearFiltersBtn").addEventListener("click", clearFilters);
   document.getElementById("chooseForMeBtn").addEventListener("click", chooseForMe);
 
+  // Mobile-only accordion toggle for the search criteria panel (no-op on
+  // desktop, where CSS keeps it permanently expanded regardless of this
+  // attribute).
+  const controlsToggle = document.getElementById("controlsToggle");
+  controlsToggle.addEventListener("click", () => {
+    const expanded = controlsToggle.getAttribute("aria-expanded") === "true";
+    controlsToggle.setAttribute("aria-expanded", String(!expanded));
+  });
+
   // Filters re-run the search live — there's no separate "go" button for
   // them (searchBtn is hidden in favor of the header CTA), so without this
   // changing radius/open-now wouldn't do anything until the next unrelated
@@ -313,6 +322,10 @@ async function runSearch({ radiusOverrideMeters, fit = true } = {}) {
     renderResults(matched, { fit });
     setStatus("");
     document.getElementById("resultsCount").textContent = `${matched.length} places found`;
+    // On mobile this collapses the search-criteria accordion back down so
+    // the map/results are visible instead of the filter panel; harmless on
+    // desktop, where CSS ignores this attribute and keeps it expanded.
+    document.getElementById("controlsToggle").setAttribute("aria-expanded", "false");
 
     // Layer in curated notable spots that happen to already be on screen —
     // never ones outside it, so they can't drag the zoom out wider than the
