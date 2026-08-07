@@ -189,13 +189,36 @@ function chooseForMe() {
 function locateUser() {
   return new Promise((resolve, reject) => {
     if (!navigator.geolocation) return reject({ code: 0 });
+
+    // Belt-and-suspenders timeout: the PositionOptions.timeout below is
+    // supposed to guarantee the error callback fires within 15s even on
+    // total failure, but some mobile browsers don't honor it while a
+    // permission prompt is still pending/unanswered — neither callback
+    // fires at all, and the UI is stuck on "Finding your location…"
+    // forever. This settles the promise ourselves a beat later regardless
+    // of what the browser does internally.
+    let settled = false;
+    const fallbackTimer = setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      reject({ code: 3 });
+    }, 16000);
+
     navigator.geolocation.getCurrentPosition(
       (pos) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(fallbackTimer);
         userLocation = { lat: pos.coords.latitude, lng: pos.coords.longitude };
         map.setCenter(userLocation);
         resolve();
       },
-      (err) => reject(err),
+      (err) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(fallbackTimer);
+        reject(err);
+      },
       // maximumAge lets the browser hand back a recent cached fix instead of
       // forcing a fresh (slower, more failure-prone) lookup on every load.
       { timeout: 15000, maximumAge: 5 * 60 * 1000 }
