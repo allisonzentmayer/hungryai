@@ -132,7 +132,7 @@ body.app-shell {
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
-  padding: 0.7rem 1.3rem;
+  padding: 0.6rem 1.3rem 0.85rem;
   background: var(--pink-deep);
   color: white;
   border: none;
@@ -169,8 +169,17 @@ body.app-shell {
   border-right: 1px solid var(--line);
   display: flex;
   flex-direction: column;
-  gap: 0.9rem;
   overflow: hidden;
+}
+/* Desktop: no toggle, body just always renders. Mobile turns this into a
+   collapsible accordion — see the mobile block at the end of this file. */
+.controls-toggle { display: none; }
+.controls-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  flex: 1;
+  min-height: 0;
 }
 .control-row { display: flex; flex-direction: column; gap: 0.4rem; }
 .control-row label {
@@ -264,6 +273,9 @@ body.app-shell {
   padding-top: 0.5rem;
   flex-shrink: 0;
 }
+/* Desktop keeps the mascot at the bottom of the sidebar (above); this
+   second copy below the map is mobile-only — see the mobile block. */
+.mobile-mascot { display: none; }
 .speech-bubble {
   position: relative;
   background: white;
@@ -540,6 +552,11 @@ body.app-shell {
   border-top: 1px solid var(--line);
   min-height: 90px;
 }
+/* No AdSense unit uncommented yet, so right now this only ever contains an
+   HTML comment — collapse it instead of reserving 90px+ of empty space.
+   Comments don't count as content for :empty, so this "just works" the
+   moment a real <ins> unit gets uncommented in here later. */
+.ad-slot:empty { display: none; }
 
 .site-footer {
   padding: 1rem 1.5rem;
@@ -566,6 +583,9 @@ body.app-shell {
 .about-hero { max-width: 640px; margin: 0 auto; padding: 2.5rem 2rem; text-align: center; }
 .about-hero .mascot-pig { width: 140px; margin-bottom: 1rem; }
 .about-hero p { line-height: 1.6; color: var(--ink); }
+/* Desktop already has this button in the header — only needed here once
+   the header version is hidden on mobile (see the mobile block). */
+.about-cta { display: none; }
 
 /* ---------- mobile ---------- */
 /* Kept as one block at the end of the file, on purpose: CSS resolves ties
@@ -575,8 +595,16 @@ body.app-shell {
    silently undone — which is exactly what was collapsing the map to zero
    height on phones. */
 @media (max-width: 900px) {
-  .topbar { grid-template-columns: 1fr; justify-items: center; text-align: center; padding: 1rem; }
-  .topbar .cta-btn { justify-self: center; white-space: normal; text-align: center; }
+  /* gap: 1.5rem (base) is sized for the desktop 3-column row layout; once
+     mobile stacks brand/nav into a single column that same value becomes a
+     much-too-large vertical gap between them. Padding goes asymmetric too —
+     less above the logo, more below the nav before the checkered stripe. */
+  .topbar { grid-template-columns: 1fr; justify-items: center; text-align: center; gap: 0.35rem; padding: 0.5rem 1rem 1rem; }
+  /* No room for it on a phone header, and it'd otherwise make the header a
+     different height per page depending on whether that page has one —
+     desktop keeps it. About's copy moves below the page text instead
+     (.about-cta); Privacy and the map page just lose it on mobile. */
+  .topbar .cta-btn { display: none; }
 
   /* overflow-x: hidden (not the old blanket "auto") so if anything is still
      a hair too wide, it gets clipped instead of letting the whole page pan
@@ -588,9 +616,56 @@ body.app-shell {
   body.app-shell { overflow-y: auto; }
   .layout { grid-template-columns: 1fr; flex: none; }
   .controls, .results { height: auto; overflow: visible; }
-  .map { height: 60vh; }
+  /* The map is the point — keep it visible without scrolling past a wall of
+     filters. Search criteria collapse into an accordion above it instead. */
+  .map { height: 55vh; }
 
-  .controls { padding: 1.25rem; }
+  .controls { padding: 0.75rem 1rem; border-right: none; border-bottom: 1px solid var(--line); }
+  .controls-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    padding: 0.6rem 0.9rem;
+    background: white;
+    border: 1.5px solid var(--pink-pale);
+    border-radius: 999px;
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--pink-deep);
+    cursor: pointer;
+  }
+  .toggle-chevron { width: 16px; height: 16px; transition: transform 0.2s; }
+  .controls-toggle[aria-expanded="true"] .toggle-chevron { transform: rotate(180deg); }
+  .controls-body { display: none; }
+  .controls-toggle[aria-expanded="true"] + .controls-body {
+    display: flex;
+    padding-top: 0.9rem;
+  }
+  /* The sidebar's mascot only shows on desktop — mobile has its own copy
+     at the bottom of the results (.mobile-mascot), regardless of accordion
+     state. */
+  .controls-body .mascot-note { display: none; }
+  .mobile-mascot {
+    display: flex;
+    padding: 0.65rem 1rem;
+    background: var(--paper);
+    border-top: 1px solid var(--line);
+    border-bottom: 1px solid var(--line);
+  }
+  .mobile-mascot .mascot-pig { width: 56px; }
+
+  .about-cta { display: inline-flex; margin-top: 1.5rem; }
+
   .zip-input-group { flex-wrap: wrap; }
   .search-area-btn { max-width: calc(100vw - 40px); text-align: center; }
+
+  /* Smaller controls all round. */
+  .secondary-btn, #clearFiltersBtn { padding: 0.45rem 0.8rem; font-size: 0.78rem; }
+  .map-round-btn { width: 34px; height: 34px; }
+  .map-round-btn svg { width: 15px; height: 15px; }
+  .map-toggle { font-size: 0.72rem; }
+  .map-toggle button { padding: 0.3rem 0.7rem; }
+  .open-external-btn { width: 26px; height: 26px; }
+  .result-badge { width: 22px; height: 22px; font-size: 0.7rem; }
 }

@@ -63,45 +63,111 @@
 
   <main class="layout">
     <section class="controls" aria-label="Search filters">
-      <div class="control-row">
-        <label for="radius">Search radius</label>
-        <div class="select-wrap">
-          <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="13" cy="4" r="2"/><path d="M15 8.5l-3.5 1L10 14l-3 6h2.2l2.3-4.6 1.8 1.6L14 22h2l-1.3-6.1 1.8-3.4L19 14v-2l-3.3-1.2z"/></svg>
-          <select id="radius">
-            <option value="402">5 min walk (0.25 mi)</option>
-            <option value="805" selected>10 min walk (0.5 mi)</option>
-            <option value="1609">20 min walk (1 mi)</option>
-            <option value="4828">Short drive (3 mi)</option>
-          </select>
-        </div>
-      </div>
-
-      <div class="control-row checkbox-row">
-        <input type="checkbox" id="openNow" checked />
-        <label for="openNow">Open now</label>
-      </div>
-
-      <button id="searchBtn">Find good food near me</button>
-      <button id="enableLocationBtn" class="secondary-btn" type="button" hidden>Enable location access</button>
-      <button id="chooseForMeBtn" class="secondary-btn" type="button">
-        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" width="16" height="16"><circle cx="12" cy="12" r="10"/><circle cx="8.5" cy="9" r="1.4" fill="#fff"/><circle cx="15.5" cy="9" r="1.4" fill="#fff"/><circle cx="9" cy="15" r="1.2" fill="#fff"/><circle cx="15" cy="15" r="1.2" fill="#fff"/><circle cx="12" cy="12" r="1.2" fill="#fff"/></svg>
-        Choose for me
+      <button id="controlsToggle" class="controls-toggle" type="button" aria-expanded="false" aria-controls="controlsBody">
+        <span>Search criteria</span>
+        <svg class="toggle-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
       </button>
 
-      <div class="control-row zip-row">
-        <label for="zipInput">Or search by zip code</label>
-        <div class="zip-input-group">
-          <div class="zip-input-wrap">
-            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2C7.6 2 4 5.6 4 10c0 5.4 7 11.5 7.3 11.7a1 1 0 001.4 0C13 21.5 20 15.4 20 10c0-4.4-3.6-8-8-8zm0 11a3 3 0 110-6 3 3 0 010 6z"/></svg>
-            <input type="text" id="zipInput" inputmode="numeric" autocomplete="postal-code" placeholder="e.g. 10001" />
+      <div id="controlsBody" class="controls-body">
+        <div class="control-row">
+          <label for="radius">Search radius</label>
+          <div class="select-wrap">
+            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="13" cy="4" r="2"/><path d="M15 8.5l-3.5 1L10 14l-3 6h2.2l2.3-4.6 1.8 1.6L14 22h2l-1.3-6.1 1.8-3.4L19 14v-2l-3.3-1.2z"/></svg>
+            <select id="radius">
+              <option value="402">5 min walk (0.25 mi)</option>
+              <option value="805" selected>10 min walk (0.5 mi)</option>
+              <option value="1609">20 min walk (1 mi)</option>
+              <option value="4828">Short drive (3 mi)</option>
+            </select>
           </div>
-          <button id="zipBtn" class="secondary-btn" type="button">Go</button>
+        </div>
+
+        <div class="control-row checkbox-row">
+          <input type="checkbox" id="openNow" checked />
+          <label for="openNow">Open now</label>
+        </div>
+
+        <button id="searchBtn">Find good food near me</button>
+        <button id="enableLocationBtn" class="secondary-btn" type="button" hidden>Enable location access</button>
+        <button id="chooseForMeBtn" class="secondary-btn" type="button">
+          <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" width="16" height="16"><circle cx="12" cy="12" r="10"/><circle cx="8.5" cy="9" r="1.4" fill="#fff"/><circle cx="15.5" cy="9" r="1.4" fill="#fff"/><circle cx="9" cy="15" r="1.2" fill="#fff"/><circle cx="15" cy="15" r="1.2" fill="#fff"/><circle cx="12" cy="12" r="1.2" fill="#fff"/></svg>
+          Choose for me
+        </button>
+
+        <div class="control-row zip-row">
+          <label for="zipInput">Or search by zip code</label>
+          <div class="zip-input-group">
+            <div class="zip-input-wrap">
+              <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2C7.6 2 4 5.6 4 10c0 5.4 7 11.5 7.3 11.7a1 1 0 001.4 0C13 21.5 20 15.4 20 10c0-4.4-3.6-8-8-8zm0 11a3 3 0 110-6 3 3 0 010 6z"/></svg>
+              <input type="text" id="zipInput" inputmode="numeric" autocomplete="postal-code" placeholder="e.g. 10001" />
+            </div>
+            <button id="zipBtn" class="secondary-btn" type="button">Go</button>
+          </div>
+        </div>
+
+        <p id="status" class="status" role="status"></p>
+
+        <div class="mascot-note">
+          <div class="speech-bubble">Let's find something good to eat!</div>
+          <div class="mascot-wrap">
+            <span class="oink-bubble" aria-hidden="true">Oink!</span>
+            <svg class="mascot-pig" viewBox="0 0 120 140" aria-hidden="true">
+              <ellipse cx="40" cy="26" rx="12" ry="14" fill="#f6a8c0"/>
+              <ellipse cx="80" cy="26" rx="12" ry="14" fill="#f6a8c0"/>
+              <ellipse cx="40" cy="28" rx="6" ry="7" fill="#e37da0"/>
+              <ellipse cx="80" cy="28" rx="6" ry="7" fill="#e37da0"/>
+              <path d="M104 92q14-4 8-16" stroke="#f6a8c0" stroke-width="6" fill="none" stroke-linecap="round"/>
+              <ellipse cx="60" cy="98" rx="42" ry="34" fill="#f6a8c0"/>
+              <rect x="34" y="122" width="15" height="16" rx="7" fill="#f6a8c0"/>
+              <rect x="71" y="122" width="15" height="16" rx="7" fill="#f6a8c0"/>
+              <ellipse cx="60" cy="55" rx="34" ry="30" fill="#f9c4d6"/>
+              <ellipse cx="34" cy="58" rx="6" ry="4" fill="#f6a8c0" opacity="0.6"/>
+              <ellipse cx="86" cy="58" rx="6" ry="4" fill="#f6a8c0" opacity="0.6"/>
+              <circle cx="46" cy="48" r="3" fill="#3a2233"/>
+              <circle cx="74" cy="48" r="3" fill="#3a2233"/>
+              <ellipse cx="60" cy="63" rx="15" ry="11" fill="#f291b3"/>
+              <circle cx="54" cy="63" r="2.6" fill="#b84b72"/>
+              <circle cx="66" cy="63" r="2.6" fill="#b84b72"/>
+            </svg>
+          </div>
         </div>
       </div>
+    </section>
 
-      <p id="status" class="status" role="status"></p>
+    <div id="map" class="map"></div>
 
-      <div class="mascot-note">
+    <section class="results" aria-label="Results">
+      <ol id="resultsList" class="results-list"></ol>
+      <div class="results-footer">
+        <span id="resultsCount"></span>
+        <button id="clearFiltersBtn" type="button">Clear filters</button>
+      </div>
+
+      <!--
+        Uncomment this whole block once AdSense is approved, filling in
+        data-ad-client (your ca-pub-... id) and data-ad-slot (this unit's id
+        from AdSense > Ads > By ad unit). Left fully commented out (rather
+        than an empty <div class="ad-slot">) on purpose — a div containing
+        only a comment still counts as non-empty in CSS (the whitespace
+        around the comment is itself a text node), so :empty-based collapse
+        doesn't work; it still reserved a blank padded box.
+
+        <div class="ad-slot" aria-label="Advertisement">
+          <ins class="adsbygoogle"
+               style="display:block"
+               data-ad-client="ca-pub-XXXXXXXXXXXXXXXX"
+               data-ad-slot="0000000000"
+               data-ad-format="auto"
+               data-full-width-responsive="true"></ins>
+          <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
+        </div>
+      -->
+
+      <!-- Mobile only — desktop keeps the mascot at the bottom of the
+           sidebar. On mobile the sidebar becomes a collapsible accordion, so
+           the pig lives here instead, at the very bottom under the results
+           and just above the privacy policy link. -->
+      <div class="mascot-note mobile-mascot">
         <div class="speech-bubble">Let's find something good to eat!</div>
         <div class="mascot-wrap">
           <span class="oink-bubble" aria-hidden="true">Oink!</span>
@@ -124,31 +190,6 @@
             <circle cx="66" cy="63" r="2.6" fill="#b84b72"/>
           </svg>
         </div>
-      </div>
-    </section>
-
-    <div id="map" class="map"></div>
-
-    <section class="results" aria-label="Results">
-      <ol id="resultsList" class="results-list"></ol>
-      <div class="results-footer">
-        <span id="resultsCount"></span>
-        <button id="clearFiltersBtn" type="button">Clear filters</button>
-      </div>
-
-      <div class="ad-slot" aria-label="Advertisement">
-        <!--
-          Uncomment once approved, filling in data-ad-client (your ca-pub-... id)
-          and data-ad-slot (this unit's id from AdSense > Ads > By ad unit):
-
-          <ins class="adsbygoogle"
-               style="display:block"
-               data-ad-client="ca-pub-XXXXXXXXXXXXXXXX"
-               data-ad-slot="0000000000"
-               data-ad-format="auto"
-               data-full-width-responsive="true"></ins>
-          <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
-        -->
       </div>
 
       <footer class="site-footer">
