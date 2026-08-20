@@ -328,7 +328,7 @@ async function runSearch({ radiusOverrideMeters, fit = true } = {}) {
   document.getElementById("searchBtn").disabled = true;
   if (searchAreaBtn) searchAreaBtn.hidden = true;
 
-  // No minRating param — we're leaning on the Yelp cross-check + weighted
+  // No minRating param — we're leaning on the press-mention boost + weighted
   // score to surface quality instead of a hard Google-star-rating cutoff.
   const url = `/.netlify/functions/search-restaurants?lat=${userLocation.lat}&lng=${userLocation.lng}&radius=${radius}&openNow=${openNow}`;
 
@@ -547,6 +547,13 @@ function renderResults(results, { fit = true } = {}) {
     const traits = (place.tags || [])
       .map((t) => `<span class="trait-badge">${escapeHtml(t)}</span>`)
       .join("");
+    const pressMentions = place.pressMentions || [];
+    const pressStr =
+      pressMentions.length > 0
+        ? `<span class="press-badge" title="${escapeHtml(
+            pressMentions.map((m) => m.source_name || "Featured").join(", ")
+          )}">Featured in ${pressMentions.length} source${pressMentions.length > 1 ? "s" : ""}</span>`
+        : "";
 
     const badgeContent = place.isNotable
       ? `<svg class="badge-star" viewBox="0 0 40 40" aria-hidden="true"><path d="${STAR_PATH}" fill="currentColor"/></svg><span class="badge-num">${i + 1}</span>`
@@ -565,6 +572,7 @@ function renderResults(results, { fit = true } = {}) {
           ${priceStr ? `${priceStr} · ` : ""}${place.cuisine ? `${escapeHtml(place.cuisine)}` : ""}${place.cuisine && openStr ? " · " : ""}${openStr}
         </div>
         ${badges ? `<div class="award-badges">${badges}</div>` : ""}
+        ${pressStr ? `<div class="award-badges">${pressStr}</div>` : ""}
         ${traits ? `<div class="trait-badges">${traits}</div>` : ""}
       </div>
       ${place.mapsUrl ? `<button type="button" class="open-external-btn" title="Open in Google Maps" aria-label="Open in Google Maps">

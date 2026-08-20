@@ -35,18 +35,24 @@ Create Credentials → API Key. You need **two separate keys**:
   domain — nobody else can use it even if they see it in your page source.
 - Paste it into `index.html`, replacing `YOUR_CLIENT_SIDE_KEY`.
 
-## 1b. (Optional) Yelp cross-check
+## 1b. (Optional) Press-mentioned restaurants (Supabase)
 
-`search-restaurants.js` will also cross-reference each Google result against
-Yelp if you give it a key — a place that matches a Yelp listing with a
-mediocre Yelp rating gets filtered out, catching spots that look good on
-Google but not elsewhere. No key = this step is skipped and ranking falls
-back to Google-only, exactly as before.
+`search-restaurants.js` will also merge in restaurants from a Supabase
+database if you give it credentials — these are the ones the separate
+`hungrydb` repo has ingested from articles you've fed it (Eater, local
+press, "best of" lists, etc.). A restaurant that shows up in both Google's
+search and Supabase gets a score boost from its press mentions; one
+Supabase knows about that Google's nearby search didn't happen to surface
+gets fetched and added in on its own. No credentials = this step is skipped
+and ranking falls back to Google-only, exactly as before.
 
-- Sign up at yelp.com/developers, create an app, and grab the API key (check
-  their current free-tier limits/pricing when you sign up — it's changed
-  over time).
-- Goes in Netlify as `YELP_API_KEY` (step 3) and/or your local `.env`.
+- Set up the `hungrydb` repo first (see its README) — that's what creates
+  the Supabase project, the `restaurants`/`mentions` tables, and actually
+  populates them.
+- Use the **anon** key here, not the service key — this function only
+  reads. Grab it from Supabase → Project Settings → API.
+- Goes in Netlify as `SUPABASE_URL` and `SUPABASE_ANON_KEY` (step 3) and/or
+  your local `.env`.
 
 ## 2. Push this to GitHub
 
@@ -67,7 +73,7 @@ Create a new repo on GitHub and push to it.
 3. Before or after the first deploy, go to **Site settings → Environment
    variables** and add:
    - `GOOGLE_PLACES_API_KEY` = your server-side key from step 1.
-   - `YELP_API_KEY` = your Yelp key from step 1b, if you set that up.
+   - `SUPABASE_URL` and `SUPABASE_ANON_KEY` = from step 1b, if you set that up.
 4. Redeploy if needed (Netlify → Deploys → Trigger deploy).
 
 ## 4. Test it
@@ -93,13 +99,10 @@ ranked list of nearby restaurants with markers on the map.
 - No real caching layer yet (the `Cache-Control` header helps at the CDN
   edge, but a proper cache — Netlify Blobs or similar — would cut Places
   API costs further as traffic grows).
-- Yelp cross-checking and the curated Michelin/James Beard dataset
-  (`data/notable-restaurants.json`) are in place, but "best of" press lists
-  (Eater, LA Times, The Infatuation, etc.) still aren't — there's no API for
-  those, so covering more cities means repeating the same manual
-  research-and-compile process used for Michelin/JBF.
-- That curated dataset is also static and metro-limited today. The plan is a
-  scheduled job (Netlify Scheduled Functions or similar) that periodically
-  re-gathers this data for major metros and writes it to a real cache
-  (Netlify Blobs or a small DB) instead of a checked-in JSON file — not
-  built yet.
+- Press-mentioned restaurants now come from Supabase (see 1b), fed by the
+  separate `hungrydb` ingestion pipeline, alongside the curated
+  Michelin/James Beard dataset (`data/notable-restaurants.json`).
+- That curated Michelin/JBF dataset is still static and metro-limited,
+  unlike the Supabase-backed press mentions — worth migrating into the same
+  `restaurants`/`mentions` tables at some point instead of a checked-in
+  JSON file.

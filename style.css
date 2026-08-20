@@ -495,6 +495,20 @@ body.app-shell {
   background: var(--pink-pale);
 }
 
+/* Press mentions from the hungrydb ingestion pipeline (Supabase) — bordered
+   and gold-tinted rather than filled, so it reads as "written up elsewhere"
+   and doesn't compete visually with the solid Michelin/James Beard badges. */
+.press-badge {
+  padding: 0.15rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  color: var(--gold-ink);
+  background: rgba(240, 160, 32, 0.14);
+  border: 1px solid rgba(240, 160, 32, 0.35);
+}
+
 /* "Known for" tags — deliberately quieter than award-badge (outlined, not
    filled) so the Michelin/James Beard badges stay the visually dominant
    signal and these read as supporting context, not another award. */
