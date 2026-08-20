@@ -73,6 +73,26 @@ function pressBoost(mentionCount) {
   return Math.min(mentionCount, 3) * 0.15;
 }
 
+// Short "known for" pills (signature dish, atmosphere, named accolade, etc.)
+// pulled from mentions.tags — capped and deduped here so the frontend can
+// render them straight through without risking a card stretched tall by a
+// long tag list or near-duplicate phrasing across sources.
+const MAX_PRESS_TAGS = 3;
+function pressTags(mentions) {
+  const seen = new Set();
+  const tags = [];
+  for (const m of mentions) {
+    for (const tag of m.tags || []) {
+      const key = tag.trim().toLowerCase();
+      if (!key || seen.has(key)) continue;
+      seen.add(key);
+      tags.push(tag.trim());
+      if (tags.length >= MAX_PRESS_TAGS) return tags;
+    }
+  }
+  return tags;
+}
+
 function placeToResult(p, neighborhoodAvg) {
   return {
     id: p.id,
@@ -88,6 +108,7 @@ function placeToResult(p, neighborhoodAvg) {
     mapsUrl: p.googleMapsUri,
     score: weightedScore(p.rating, p.userRatingCount, neighborhoodAvg),
     pressMentions: [],
+    pressTags: [],
   };
 }
 
@@ -110,7 +131,7 @@ async function fetchPressMentions(lat, lng, radiusMeters) {
   // URLSearchParams doesn't handle cleanly.
   const url =
     `${supabaseUrl}/rest/v1/restaurants` +
-    `?select=place_id,name,lat,lng,business_status,mentions(source_name,source_url,reason)` +
+    `?select=place_id,name,lat,lng,business_status,mentions(source_name,source_url,reason,tags)` +
     `&lat=gte.${lat - latDelta}&lat=lte.${lat + latDelta}` +
     `&lng=gte.${lng - lngDelta}&lng=lte.${lng + lngDelta}` +
     `&business_status=not.eq.CLOSED_PERMANENTLY`;
@@ -226,6 +247,7 @@ exports.handler = async (event) => {
       if (pressMap.has(r.id)) {
         const info = pressMap.get(r.id);
         r.pressMentions = info.mentions;
+        r.pressTags = pressTags(info.mentions);
         r.score += pressBoost(info.mentions.length);
       }
     }
@@ -242,6 +264,7 @@ exports.handler = async (event) => {
       const [, info] = missing[i];
       const result = placeToResult(p, neighborhoodAvg);
       result.pressMentions = info.mentions;
+      result.pressTags = pressTags(info.mentions);
       result.score += pressBoost(info.mentions.length);
       results.push(result);
     });

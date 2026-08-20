@@ -521,6 +521,14 @@ body.app-shell {
   color: var(--muted);
   background: white;
   border: 1px solid var(--line);
+  /* Some tags come from LLM extraction (press mentions), not just the
+     hand-curated Michelin/JBF list — truncate defensively so a longer-than-
+     expected one clips with an ellipsis instead of wrapping and stretching
+     the card. */
+  max-width: 11rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .open-external-btn {
   flex-shrink: 0;

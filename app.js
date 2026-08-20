@@ -544,7 +544,7 @@ function renderResults(results, { fit = true } = {}) {
     const badges = (place.awards || [])
       .map((a) => `<span class="award-badge">${escapeHtml(awardBadgeText(a))}</span>`)
       .join("");
-    const traits = (place.tags || [])
+    const traits = [...(place.tags || []), ...(place.pressTags || [])]
       .map((t) => `<span class="trait-badge">${escapeHtml(t)}</span>`)
       .join("");
     const pressMentions = place.pressMentions || [];
