@@ -613,9 +613,11 @@ function fitMapToResults(results) {
   suppressSearchAreaPrompt = true;
   map.fitBounds(bounds, 48);
   // fitBounds can over-zoom when everything is clustered close together
-  // (or there's only one result) — cap it so we don't end up street-level.
+  // (or there's only one result, e.g. right on page load) — cap it well
+  // short of street-level so it still reads as "here's the neighborhood,"
+  // not a jarring zoom into one block.
   google.maps.event.addListenerOnce(map, "bounds_changed", () => {
-    if (map.getZoom() > 17) map.setZoom(17);
+    if (map.getZoom() > 15) map.setZoom(15);
   });
   google.maps.event.addListenerOnce(map, "idle", () => {
     suppressSearchAreaPrompt = false;
