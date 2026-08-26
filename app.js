@@ -17,6 +17,18 @@ let autoSearchTimer = null;
 // actually panning/zooming by hand — only the latter should surface
 // "Search this area".
 let suppressSearchAreaPrompt = false;
+// Flipped true the moment real user interaction (drag/zoom, not one of our
+// own programmatic moves) is detected after a search cycle starts. Checked
+// by fitMapToResults() right before it would otherwise snap the camera to
+// that search's results — without this, a slow-to-resolve search (e.g. the
+// widen-radius fallback on page load) could finish after the user has
+// already scrolled/zoomed elsewhere and yank the view back to stale
+// results, undoing what they just did. Reset at the start of each fresh
+// "new location, start searching" entry point (initial locate, map click,
+// zip search) — not inside runSearch() itself, since a single search cycle
+// (e.g. the widen-radius fallback) can call runSearch() more than once and
+// an interruption partway through needs to survive across all of them.
+let searchInterruptedByUser = false;
 
 // Curated Michelin/James Beard restaurants (data/notable-restaurants.json).
 // Ones that also turn up in the live Places search always show (matched by
@@ -116,7 +128,9 @@ function initMap() {
   // search trigger.
   ["radius", "openNow"].forEach((id) => {
     document.getElementById(id).addEventListener("change", () => {
-      if (userLocation) runSearch();
+      if (!userLocation) return;
+      searchInterruptedByUser = false;
+      runSearch();
     });
   });
 
@@ -124,9 +138,20 @@ function initMap() {
   initLocationOnLoad();
 
   map.addListener("click", (e) => {
+    searchInterruptedByUser = false;
     userLocation = { lat: e.latLng.lat(), lng: e.latLng.lng() };
     hideLocationButton();
     runSearch();
+  });
+
+  // Catches real user interaction as early as possible (the moment a drag
+  // or zoom begins, not once it settles) so a slow in-flight search knows
+  // to back off before it finishes — see searchInterruptedByUser above.
+  map.addListener("dragstart", () => {
+    if (!suppressSearchAreaPrompt) searchInterruptedByUser = true;
+  });
+  map.addListener("zoom_changed", () => {
+    if (!suppressSearchAreaPrompt) searchInterruptedByUser = true;
   });
 
   // Auto re-search once the map settles somewhere that no longer matches
@@ -201,7 +226,9 @@ function clearFilters() {
   document.getElementById("radius").value = "1609";
   document.getElementById("openNow").checked = true;
   document.getElementById("zipInput").value = "";
-  if (userLocation) runSearch();
+  if (!userLocation) return;
+  searchInterruptedByUser = false;
+  runSearch();
 }
 
 // Picks a random place from whatever's currently on screen and opens it in
@@ -283,6 +310,7 @@ function attemptZipSearch() {
   setStatus("Looking up that zip code…");
   geocodeZip(zip)
     .then((loc) => {
+      searchInterruptedByUser = false;
       userLocation = loc;
       suppressSearchAreaPrompt = true;
       map.setCenter(loc);
@@ -370,6 +398,7 @@ const MAX_SEARCH_RADIUS_METERS = 50000;
 // tier wins is rendered straight from its own response — no redundant
 // re-fetch at the winning radius afterward.
 async function runInitialSearch() {
+  searchInterruptedByUser = false;
   await runSearch();
   if (lastResults.length > 0) return;
 
@@ -756,6 +785,12 @@ function renderResults(results, { fit = true } = {}) {
 // Zooms/pans so every marker (plus the searched-from point) is actually
 // visible, instead of leaving pins scattered outside the current viewport.
 function fitMapToResults(results) {
+  // The user already moved on (dragged/zoomed) while this search was still
+  // in flight — respect wherever they are now instead of yanking the
+  // camera back to stale results. The idle listener above will pick up
+  // their new position and search it once they settle.
+  if (searchInterruptedByUser) return;
+
   const bounds = new google.maps.LatLngBounds();
   if (userLocation) bounds.extend(userLocation);
   results.forEach((r) => bounds.extend({ lat: r.lat, lng: r.lng }));
