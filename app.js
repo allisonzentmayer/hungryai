@@ -647,11 +647,37 @@ function awardBadgeText(award) {
     : `JAMES BEARD · ${award.category} (${award.year})`;
 }
 
+// Toggles a marker's "here's this one" look — grown + lightened icon and a
+// higher z-index so it doesn't get lost behind neighbors. Needs the
+// result's index (for its label number) and isNotable (pin vs star), found
+// by matching id against the currently-rendered results.
+function setMarkerEmphasized(id, emphasized) {
+  const marker = markersById.get(id);
+  if (!marker) return;
+  const idx = lastResults.findIndex((r) => r.id === id);
+  if (idx === -1) return;
+  const place = lastResults[idx];
+  const labelText = String(idx + 1);
+  const iconFn = place.isNotable ? notableMarkerIcon : pinMarkerIcon;
+  marker.setIcon(iconFn(labelText, { hovered: emphasized }));
+  marker.setZIndex(emphasized ? 9999 : place.isNotable ? 999 : 1);
+}
+
+// Grows + lightens a marker and gives it a quick bounce — the shared
+// "here's this one" cue for clicking a result, whether that's its card, its
+// map pin, or "Choose for me". Hovering a card uses the same emphasis (via
+// setMarkerEmphasized) but toggles off directly on mouseleave instead of
+// waiting for this timeout, since hover has a natural "off" signal a click
+// doesn't.
 function highlightMarker(id) {
+  setMarkerEmphasized(id, true);
   const marker = markersById.get(id);
   if (!marker) return;
   marker.setAnimation(google.maps.Animation.BOUNCE);
-  setTimeout(() => marker.setAnimation(null), 700);
+  setTimeout(() => {
+    marker.setAnimation(null);
+    setMarkerEmphasized(id, false);
+  }, 700);
 }
 
 function renderResults(results, { fit = true } = {}) {
@@ -669,7 +695,10 @@ function renderResults(results, { fit = true } = {}) {
       title: place.name,
       zIndex: place.isNotable ? 999 : 1,
     });
-    marker.addListener("click", () => scrollToCard(place.id));
+    marker.addListener("click", () => {
+      scrollToCard(place.id);
+      highlightMarker(place.id);
+    });
     markers.push(marker);
     markersById.set(place.id, marker);
 
@@ -756,19 +785,14 @@ function renderResults(results, { fit = true } = {}) {
       });
       highlightMarker(place.id);
     });
-    // Hovering a card grows + lightens its marker (plus a quick bounce) so
-    // scrolling the list gives an obvious "here's where that one is" cue on
-    // the map, without panning the map around while you're just browsing.
-    li.addEventListener("mouseenter", () => {
-      marker.setIcon(place.isNotable ? notableMarkerIcon(String(i + 1), { hovered: true }) : pinMarkerIcon(String(i + 1), { hovered: true }));
-      marker.setZIndex(9999);
-      marker.setAnimation(google.maps.Animation.BOUNCE);
-      setTimeout(() => marker.setAnimation(null), 700);
-    });
-    li.addEventListener("mouseleave", () => {
-      marker.setIcon(place.isNotable ? notableMarkerIcon(String(i + 1)) : pinMarkerIcon(String(i + 1)));
-      marker.setZIndex(place.isNotable ? 999 : 1);
-    });
+    // Hovering a card triggers the same emphasis clicking it (or its map
+    // pin) does, so scrolling the list gives an obvious "here's where that
+    // one is" cue on the map without panning it while you're just
+    // browsing. mouseleave reverts immediately rather than waiting on
+    // highlightMarker's own timeout, since hover has a natural "off" signal
+    // a click doesn't.
+    li.addEventListener("mouseenter", () => highlightMarker(place.id));
+    li.addEventListener("mouseleave", () => setMarkerEmphasized(place.id, false));
     const externalBtn = li.querySelector(".open-external-btn");
     if (externalBtn) {
       externalBtn.addEventListener("click", (e) => {
