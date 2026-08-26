@@ -6,8 +6,12 @@ let markers = [];
 let markersById = new Map();
 let userLocation = null;
 let notableRestaurants = [];
-let searchAreaBtn;
 let lastResults = [];
+// Zoom level as of the last search — lets the auto-search-on-move listener
+// tell "user zoomed, area shown no longer matches what's loaded" apart from
+// "map center barely nudged," even when the center itself hasn't moved.
+let lastSearchZoom = null;
+let autoSearchTimer = null;
 // Set around programmatic camera moves (fitBounds, focusing a result) so the
 // dragend/zoom_changed listeners below can tell those apart from the user
 // actually panning/zooming by hand — only the latter should surface
@@ -125,18 +129,30 @@ function initMap() {
     runSearch();
   });
 
-  // Offer to re-search once the user has actually panned away from wherever
-  // the current results are centered on, or changed the zoom at all (either
-  // one means what's on screen no longer matches what was last searched).
-  map.addListener("dragend", () => {
-    if (!userLocation || !searchAreaBtn || suppressSearchAreaPrompt) return;
+  // Auto re-search once the map settles somewhere that no longer matches
+  // what's loaded — either panned far enough away, or zoomed to a
+  // different level (same center, different-sized area). "idle" fires once
+  // per gesture (drag, scroll-zoom, pinch, keyboard pan) after it settles,
+  // rather than firing repeatedly mid-gesture. suppressSearchAreaPrompt
+  // tells our own programmatic moves (fitBounds, panTo a result, zip
+  // recenter) apart from the user actually moving the map by hand — only
+  // the latter should trigger a re-search.
+  map.addListener("idle", () => {
+    if (!userLocation || suppressSearchAreaPrompt) return;
     const center = map.getCenter();
     const moved = milesBetween(userLocation, { lat: center.lat(), lng: center.lng() });
-    searchAreaBtn.hidden = moved < 0.3;
-  });
-  map.addListener("zoom_changed", () => {
-    if (!userLocation || !searchAreaBtn || suppressSearchAreaPrompt) return;
-    searchAreaBtn.hidden = false;
+    const zoomChanged = lastSearchZoom !== null && map.getZoom() !== lastSearchZoom;
+    if (moved < 0.3 && !zoomChanged) return;
+
+    clearTimeout(autoSearchTimer);
+    autoSearchTimer = setTimeout(() => {
+      userLocation = { lat: center.lat(), lng: center.lng() };
+      hideLocationButton();
+      // Search exactly what's currently visible — the radius dropdown is
+      // ignored here — and don't let the search re-fit/zoom the map
+      // afterward, since the whole point was to search this specific view.
+      runSearch({ radiusOverrideMeters: currentViewportRadiusMeters(), fit: false });
+    }, 500);
   });
 }
 
@@ -179,22 +195,6 @@ function addMapControls() {
   zoomOut.addEventListener("click", () => map.setZoom(map.getZoom() - 1));
   zoomStack.append(zoomIn, zoomOut);
   map.controls[google.maps.ControlPosition.RIGHT_BOTTOM].push(zoomStack);
-
-  searchAreaBtn = document.createElement("button");
-  searchAreaBtn.type = "button";
-  searchAreaBtn.className = "search-area-btn";
-  searchAreaBtn.textContent = "Search this area";
-  searchAreaBtn.hidden = true;
-  searchAreaBtn.addEventListener("click", () => {
-    const center = map.getCenter();
-    userLocation = { lat: center.lat(), lng: center.lng() };
-    hideLocationButton();
-    // Search exactly what's currently visible — the radius dropdown is
-    // ignored here — and don't let the search re-fit/zoom the map afterward,
-    // since the whole point was to search this specific view.
-    runSearch({ radiusOverrideMeters: currentViewportRadiusMeters(), fit: false });
-  });
-  map.controls[google.maps.ControlPosition.TOP_CENTER].push(searchAreaBtn);
 }
 
 function clearFilters() {
@@ -321,7 +321,7 @@ function attemptLocate() {
     .then(() => {
       setStatus("");
       hideLocationButton();
-      runSearch();
+      runInitialSearch();
     })
     .catch((err) => {
       // A fresh fix failed — fall back to wherever we found them last time
@@ -333,7 +333,7 @@ function attemptLocate() {
         userLocation = cachedLocation;
         map.setCenter(cachedLocation);
         setStatus("Couldn't get a fresh location — showing your last known area.");
-        runSearch();
+        runInitialSearch();
       } else if (err && err.code === 1) {
         setStatus("Location access denied — enable it for this site, then try again, or enter a zip code below.");
       } else if (err && err.code === 3) {
@@ -343,6 +343,53 @@ function attemptLocate() {
       }
       showLocationButton();
     });
+}
+
+// Radius options (meters) offered in the dropdown, ascending — plus a final,
+// not-selectable-in-the-UI regional-scale ceiling to try before giving up.
+// Google's own cap is 50km (see search-restaurants.js); no point trying past it.
+const RADIUS_OPTIONS_METERS = [402, 805, 1609, 4828];
+const MAX_SEARCH_RADIUS_METERS = 50000;
+
+// Fetches without touching any UI — used only to silently check whether a
+// given radius would find anything, before committing to a real, rendered
+// search at that radius.
+async function probeHasResults(radiusMeters) {
+  const openNow = document.getElementById("openNow").checked;
+  try {
+    const url = `/.netlify/functions/search-restaurants?lat=${userLocation.lat}&lng=${userLocation.lng}&radius=${radiusMeters}&openNow=${openNow}`;
+    const res = await fetch(url);
+    if (!res.ok) return true; // let the real search surface the error normally instead of looping on it
+    const data = await res.json();
+    return (data.results || []).length > 0;
+  } catch (_err) {
+    return true; // network hiccup while probing — bail out, let the real search handle/report it
+  }
+}
+
+// The initial "where am I" search on page load. Press-mentioned restaurants
+// are sparse enough that the default radius can easily come up empty
+// outside a covered metro — rather than showing "0 places found" to a new
+// user, silently probe progressively larger radii behind the scenes (no
+// flashing empty states) until one actually has something, then run one
+// real, visible search at that radius so the map ends up fit to it.
+async function runInitialSearch() {
+  await runSearch();
+  if (lastResults.length > 0) return;
+
+  const radiusSelect = document.getElementById("radius");
+  const startRadius = Number(radiusSelect.value);
+  const ladder = [...RADIUS_OPTIONS_METERS.filter((r) => r > startRadius), MAX_SEARCH_RADIUS_METERS];
+
+  for (const radius of ladder) {
+    if (await probeHasResults(radius)) {
+      if (RADIUS_OPTIONS_METERS.includes(radius)) radiusSelect.value = String(radius);
+      await runSearch({ radiusOverrideMeters: radius });
+      return;
+    }
+  }
+  // Exhausted every radius up to the cap — genuinely nothing nearby, leave
+  // the empty result from the initial runSearch() as the final state.
 }
 
 function showLocationButton() {
@@ -365,10 +412,10 @@ async function runSearch({ radiusOverrideMeters, fit = true } = {}) {
 
   const radius = radiusOverrideMeters ?? document.getElementById("radius").value;
   const openNow = document.getElementById("openNow").checked;
+  lastSearchZoom = map.getZoom();
 
   setStatus("Finding good places…");
   document.getElementById("searchBtn").disabled = true;
-  if (searchAreaBtn) searchAreaBtn.hidden = true;
 
   // No minRating param — we're leaning on the press-mention boost + weighted
   // score to surface quality instead of a hard Google-star-rating cutoff.

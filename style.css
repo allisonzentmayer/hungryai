@@ -368,21 +368,6 @@ body.app-shell {
   background: #f3e4e8;
 }
 
-.search-area-btn {
-  margin: 10px;
-  padding: 0.55rem 1.1rem;
-  background: var(--pink-deep);
-  color: white;
-  border: none;
-  border-radius: 999px;
-  font-size: 0.8rem;
-  font-weight: 700;
-  cursor: pointer;
-  box-shadow: 0 3px 10px rgba(58, 34, 51, 0.25);
-  transition: background 0.15s;
-}
-.search-area-btn:hover { background: var(--pink-dark); }
-
 .map-toggle {
   display: flex;
   background: white;
@@ -694,7 +679,6 @@ body.app-shell {
   .about-cta { display: inline-flex; margin-top: 1.5rem; }
 
   .zip-input-group { flex-wrap: wrap; }
-  .search-area-btn { max-width: calc(100vw - 40px); text-align: center; }
 
   /* Smaller controls all round. */
   .secondary-btn, #clearFiltersBtn { padding: 0.45rem 0.8rem; font-size: 0.78rem; }
