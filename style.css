@@ -560,14 +560,6 @@ body.app-shell {
   color: var(--muted);
   line-height: 1.4;
 }
-.why-here .why-label {
-  font-weight: 800;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--ink);
-  font-size: 0.66rem;
-  margin-right: 0.4rem;
-}
 .open-external-btn {
   flex-shrink: 0;
   width: 30px;

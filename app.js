@@ -844,7 +844,7 @@ function renderResults(results, { fit = true } = {}) {
         <div class="result-meta">${metaParts.join(" · ")}</div>
         ${ratingParts.length > 0 ? `<div class="result-rating">${ratingParts.join(" · ")}</div>` : ""}
         ${endorsements.length > 0 ? `<div class="endorsement-badges">${endorsements.join("")}</div>` : ""}
-        ${whyHere ? `<div class="why-here"><span class="why-label">Why it's here</span>${whyHere}</div>` : ""}
+        ${whyHere ? `<div class="why-here">${whyHere}</div>` : ""}
       </div>
       ${place.mapsUrl ? `<button type="button" class="open-external-btn" title="Open in Google Maps" aria-label="Open in Google Maps">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
