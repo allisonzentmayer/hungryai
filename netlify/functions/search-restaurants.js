@@ -73,6 +73,19 @@ function pressBoost(mentionCount) {
   return Math.min(mentionCount, 3) * 0.15;
 }
 
+// Rough distance in meters — good enough for ranking "which missing
+// press-mentioned places are closest," not for anything precision-sensitive.
+function approxDistanceMeters(a, b) {
+  const R = 6371000;
+  const toRad = (d) => (d * Math.PI) / 180;
+  const dLat = toRad(b.lat - a.lat);
+  const dLng = toRad(b.lng - a.lng);
+  const h =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(a.lat)) * Math.cos(toRad(b.lat)) * Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.asin(Math.sqrt(h));
+}
+
 // Short "known for" pills (signature dish, atmosphere, named accolade, etc.)
 // pulled from mentions.tags — capped and deduped here so the frontend can
 // render them straight through without risking a card stretched tall by a
@@ -253,8 +266,18 @@ exports.handler = async (event) => {
     }
 
     // Fetch details for press-mentioned places Google's nearby search
-    // didn't happen to return, so they don't get lost
-    const missing = [...pressMap.entries()].filter(([id]) => !seenIds.has(id));
+    // didn't happen to return, so they don't get lost. Capped and
+    // closest-first: a wide-radius search (the "keep widening until
+    // something shows up" fallback can go all the way to 50km) could
+    // otherwise mean dozens of individual Google Place Details round trips
+    // in one request — each one is a real outbound HTTPS call, and that was
+    // measurably adding several seconds of real-world latency that a local
+    // dev-server test doesn't reproduce.
+    const MAX_MISSING_DETAIL_LOOKUPS = 12;
+    const missing = [...pressMap.entries()]
+      .filter(([id]) => !seenIds.has(id))
+      .sort(([, a], [, b]) => approxDistanceMeters({ lat, lng }, a) - approxDistanceMeters({ lat, lng }, b))
+      .slice(0, MAX_MISSING_DETAIL_LOOKUPS);
     const detailFetches = await Promise.all(
       missing.map(([id]) => fetchPlaceDetails(id, apiKey))
     );
