@@ -619,6 +619,7 @@ body.app-shell {
 .about-hero { max-width: 640px; margin: 0 auto; padding: 2.5rem 2rem; text-align: center; }
 .about-hero .mascot-pig { width: 140px; margin-bottom: 1rem; }
 .about-hero p { line-height: 1.6; color: var(--ink); }
+.about-hero p a { color: var(--pink-deep); }
 .about-contact {
   margin-top: 1.5rem;
   padding-top: 1.5rem;
@@ -632,7 +633,6 @@ body.app-shell {
   letter-spacing: 0.05em;
   color: var(--pink-deep);
 }
-.about-contact a { color: var(--pink-deep); }
 /* Desktop already has this button in the header — only needed here once
    the header version is hidden on mobile (see the mobile block). */
 .about-cta { display: none; }
