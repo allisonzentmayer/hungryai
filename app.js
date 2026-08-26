@@ -351,45 +351,50 @@ function attemptLocate() {
 const RADIUS_OPTIONS_METERS = [402, 805, 1609, 4828];
 const MAX_SEARCH_RADIUS_METERS = 50000;
 
-// Fetches without touching any UI — used only to silently check whether a
-// given radius would find anything, before committing to a real, rendered
-// search at that radius.
-async function probeHasResults(radiusMeters) {
-  const openNow = document.getElementById("openNow").checked;
-  try {
-    const url = `/.netlify/functions/search-restaurants?lat=${userLocation.lat}&lng=${userLocation.lng}&radius=${radiusMeters}&openNow=${openNow}`;
-    const res = await fetch(url);
-    if (!res.ok) return true; // let the real search surface the error normally instead of looping on it
-    const data = await res.json();
-    return (data.results || []).length > 0;
-  } catch (_err) {
-    return true; // network hiccup while probing — bail out, let the real search handle/report it
-  }
-}
-
 // The initial "where am I" search on page load. Press-mentioned restaurants
 // are sparse enough that the default radius can easily come up empty
 // outside a covered metro — rather than showing "0 places found" to a new
-// user, silently probe progressively larger radii behind the scenes (no
-// flashing empty states) until one actually has something, then run one
-// real, visible search at that radius so the map ends up fit to it.
+// user, silently widen behind the scenes (no flashing empty states) until
+// something turns up.
+//
+// The remaining radius tiers are fetched IN PARALLEL, not one at a time —
+// an earlier version tried them sequentially and that could take 15+
+// seconds (each tier waiting on the previous one's full round trip before
+// even starting), most noticeable on a refresh where geolocation resolves
+// instantly from cache and has no delay of its own to mask the wait. Firing
+// them all at once bounds the wait to roughly one round trip, and whichever
+// tier wins is rendered straight from its own response — no redundant
+// re-fetch at the winning radius afterward.
 async function runInitialSearch() {
   await runSearch();
   if (lastResults.length > 0) return;
 
   const radiusSelect = document.getElementById("radius");
   const startRadius = Number(radiusSelect.value);
-  const ladder = [...RADIUS_OPTIONS_METERS.filter((r) => r > startRadius), MAX_SEARCH_RADIUS_METERS];
+  const openNow = document.getElementById("openNow").checked;
+  const candidates = [...RADIUS_OPTIONS_METERS.filter((r) => r > startRadius), MAX_SEARCH_RADIUS_METERS];
 
-  for (const radius of ladder) {
-    if (await probeHasResults(radius)) {
-      if (RADIUS_OPTIONS_METERS.includes(radius)) radiusSelect.value = String(radius);
-      await runSearch({ radiusOverrideMeters: radius });
-      return;
-    }
-  }
-  // Exhausted every radius up to the cap — genuinely nothing nearby, leave
-  // the empty result from the initial runSearch() as the final state.
+  const attempts = await Promise.all(
+    candidates.map(async (radius) => {
+      try {
+        const url = `/.netlify/functions/search-restaurants?lat=${userLocation.lat}&lng=${userLocation.lng}&radius=${radius}&openNow=${openNow}`;
+        const res = await fetch(url);
+        if (!res.ok) return null;
+        const data = await res.json();
+        return { radius, results: data.results || [] };
+      } catch (_err) {
+        return null;
+      }
+    })
+  );
+
+  const winner = attempts
+    .filter((a) => a && a.results.length > 0)
+    .sort((a, b) => a.radius - b.radius)[0];
+  if (!winner) return; // genuinely nothing within the cap — leave the empty result as-is
+
+  if (RADIUS_OPTIONS_METERS.includes(winner.radius)) radiusSelect.value = String(winner.radius);
+  await runSearch({ radiusOverrideMeters: winner.radius, resultsOverride: winner.results });
 }
 
 function showLocationButton() {
@@ -404,7 +409,11 @@ function setStatus(msg) {
   document.getElementById("status").textContent = msg;
 }
 
-async function runSearch({ radiusOverrideMeters, fit = true } = {}) {
+// resultsOverride skips the fetch entirely and renders already-fetched
+// results straight through — used by runInitialSearch() when it's already
+// fetched the winning radius's data itself (via its own parallel probing)
+// and re-fetching the same thing here would just be a redundant round trip.
+async function runSearch({ radiusOverrideMeters, fit = true, resultsOverride } = {}) {
   if (!userLocation) {
     setStatus("Set a location first — allow location access or click the map.");
     return;
@@ -417,20 +426,25 @@ async function runSearch({ radiusOverrideMeters, fit = true } = {}) {
   setStatus("Finding good places…");
   document.getElementById("searchBtn").disabled = true;
 
-  // No minRating param — we're leaning on the press-mention boost + weighted
-  // score to surface quality instead of a hard Google-star-rating cutoff.
-  const url = `/.netlify/functions/search-restaurants?lat=${userLocation.lat}&lng=${userLocation.lng}&radius=${radius}&openNow=${openNow}`;
-
   try {
-    const res = await fetch(url);
-    const data = await res.json();
+    let results;
+    if (resultsOverride) {
+      results = resultsOverride;
+    } else {
+      // No minRating param — we're leaning on the press-mention boost +
+      // weighted score to surface quality instead of a hard rating cutoff.
+      const url = `/.netlify/functions/search-restaurants?lat=${userLocation.lat}&lng=${userLocation.lng}&radius=${radius}&openNow=${openNow}`;
+      const res = await fetch(url);
+      const data = await res.json();
 
-    if (!res.ok) {
-      setStatus(`Something went wrong: ${data.error || "unknown error"}`);
-      return;
+      if (!res.ok) {
+        setStatus(`Something went wrong: ${data.error || "unknown error"}`);
+        return;
+      }
+      results = data.results || [];
     }
 
-    const matched = combineResults(data.results || [], userLocation);
+    const matched = combineResults(results, userLocation);
     renderResults(matched, { fit });
     setStatus("");
     document.getElementById("resultsCount").textContent = `${matched.length} places found`;
