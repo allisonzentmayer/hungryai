@@ -663,16 +663,12 @@ function renderResults(results, { fit = true } = {}) {
     if (priceStr) metaParts.push(priceStr);
     if (place.cuisine) metaParts.push(escapeHtml(place.cuisine));
 
-    // Explicitly "Google reviews" rather than a bare number — this is
-    // sourced, external metadata, deliberately kept visually separate from
+    // Rating only, no review count — kept visually separate from
     // HungryPig's own curation (the endorsement badge + "why it's here"
     // line below) so the two don't blur into one undifferentiated wall of
     // pills.
     const ratingParts = [];
     if (place.rating != null) ratingParts.push(`<span class="rating">★ ${place.rating.toFixed(1)}</span>`);
-    if (place.reviewCount != null) {
-      ratingParts.push(`${place.reviewCount} Google review${place.reviewCount === 1 ? "" : "s"}`);
-    }
     if (openStr) ratingParts.push(openStr);
 
     // One shared badge style for anything actually being vouched for — a
@@ -681,14 +677,18 @@ function renderResults(results, { fit = true } = {}) {
     const endorsements = (place.awards || []).map(
       (a) => `<span class="endorsement-badge">${escapeHtml(awardBadgeText(a))}</span>`
     );
+    // PIG PICK is reserved for actual cross-source consensus — showing up
+    // in more than one independent write-up, not just one. A single
+    // mention still gets credited, just without the stamp, since that's a
+    // meaningfully weaker signal (this mirrors the same "repetition =
+    // consensus" logic the backend already uses for score boosting).
     const pressMentions = place.pressMentions || [];
-    if (pressMentions.length > 0) {
-      const pickLabel =
-        pressMentions.length === 1
-          ? `Spotted in ${escapeHtml(pressMentions[0].source_name || "the press")}`
-          : `${pressMentions.length} trusted recommendations`;
-      const sourceTitle = escapeHtml(pressMentions.map((m) => m.source_name || "Featured").join(", "));
-      endorsements.push(`<span class="endorsement-badge" title="${sourceTitle}">🐽 PIG PICK · ${pickLabel}</span>`);
+    const pressSources = [...new Set(pressMentions.map((m) => m.source_name || "the press"))];
+    if (pressSources.length >= 2) {
+      const sourceTitle = escapeHtml(pressSources.join(", "));
+      endorsements.push(`<span class="endorsement-badge" title="${sourceTitle}">🐽 PIG PICK</span>`);
+    } else if (pressSources.length === 1) {
+      endorsements.push(`<span class="endorsement-badge">Spotted in ${escapeHtml(pressSources[0])}</span>`);
     }
 
     // Press tags win when a restaurant has both — they're pulled from a
