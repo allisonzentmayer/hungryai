@@ -656,23 +656,47 @@ function renderResults(results, { fit = true } = {}) {
         : place.openNow === false
         ? '<span class="closed-status">Closed</span>'
         : "";
-    const badges = (place.awards || [])
-      .map((a) => `<span class="award-badge">${escapeHtml(awardBadgeText(a))}</span>`)
-      .join("");
+
+    // Plain facts — distance, price, cuisine. Quiet supporting metadata,
+    // not the point of the card.
+    const metaParts = [`${place.distance.toFixed(1)} mi`];
+    if (priceStr) metaParts.push(priceStr);
+    if (place.cuisine) metaParts.push(escapeHtml(place.cuisine));
+
+    // Explicitly "Google reviews" rather than a bare number — this is
+    // sourced, external metadata, deliberately kept visually separate from
+    // HungryPig's own curation (the endorsement badge + "why it's here"
+    // line below) so the two don't blur into one undifferentiated wall of
+    // pills.
+    const ratingParts = [];
+    if (place.rating != null) ratingParts.push(`<span class="rating">★ ${place.rating.toFixed(1)}</span>`);
+    if (place.reviewCount != null) {
+      ratingParts.push(`${place.reviewCount} Google review${place.reviewCount === 1 ? "" : "s"}`);
+    }
+    if (openStr) ratingParts.push(openStr);
+
+    // One shared badge style for anything actually being vouched for — a
+    // Michelin star, a James Beard nod, or a press pick — instead of a
+    // different pill per source (that stacking to 6 pills was the bug).
+    const endorsements = (place.awards || []).map(
+      (a) => `<span class="endorsement-badge">${escapeHtml(awardBadgeText(a))}</span>`
+    );
+    const pressMentions = place.pressMentions || [];
+    if (pressMentions.length > 0) {
+      const pickLabel =
+        pressMentions.length === 1
+          ? `Spotted in ${escapeHtml(pressMentions[0].source_name || "the press")}`
+          : `${pressMentions.length} trusted recommendations`;
+      const sourceTitle = escapeHtml(pressMentions.map((m) => m.source_name || "Featured").join(", "));
+      endorsements.push(`<span class="endorsement-badge" title="${sourceTitle}">🐽 PIG PICK · ${pickLabel}</span>`);
+    }
+
     // Press tags win when a restaurant has both — they're pulled from a
     // specific, current article, while the curated Michelin/JBF tags are a
-    // static fallback. Showing both stacked to 6 badges was the bug.
+    // static fallback. Rendered as plain text, not pills — this is
+    // HungryPig's own editorial voice, a sentence, not more metadata chips.
     const traitSource = place.pressTags && place.pressTags.length > 0 ? place.pressTags : place.tags || [];
-    const traits = traitSource
-      .map((t) => `<span class="trait-badge">${escapeHtml(t)}</span>`)
-      .join("");
-    const pressMentions = place.pressMentions || [];
-    const pressStr =
-      pressMentions.length > 0
-        ? `<span class="press-badge" title="${escapeHtml(
-            pressMentions.map((m) => m.source_name || "Featured").join(", ")
-          )}">Featured in ${pressMentions.length} source${pressMentions.length > 1 ? "s" : ""}</span>`
-        : "";
+    const whyHere = traitSource.map((t) => escapeHtml(t)).join(" · ");
 
     const badgeContent = place.isNotable
       ? `<svg class="badge-star" viewBox="0 0 40 40" aria-hidden="true"><path d="${STAR_PATH}" fill="currentColor"/></svg><span class="badge-num">${i + 1}</span>`
@@ -682,17 +706,10 @@ function renderResults(results, { fit = true } = {}) {
       <span class="result-badge">${badgeContent}</span>
       <div class="result-body">
         <h3>${escapeHtml(place.name)}</h3>
-        <div class="result-meta">
-          <span>${place.distance.toFixed(1)} mi</span>
-          ${place.rating != null ? `<span>· <span class="rating">★ ${place.rating.toFixed(1)}</span></span>` : ""}
-          ${place.reviewCount != null ? `<span>(${place.reviewCount})</span>` : ""}
-        </div>
-        <div class="result-sub">
-          ${priceStr ? `${priceStr} · ` : ""}${place.cuisine ? `${escapeHtml(place.cuisine)}` : ""}${place.cuisine && openStr ? " · " : ""}${openStr}
-        </div>
-        ${badges ? `<div class="award-badges">${badges}</div>` : ""}
-        ${pressStr ? `<div class="award-badges">${pressStr}</div>` : ""}
-        ${traits ? `<div class="trait-badges">${traits}</div>` : ""}
+        <div class="result-meta">${metaParts.join(" · ")}</div>
+        ${ratingParts.length > 0 ? `<div class="result-rating">${ratingParts.join(" · ")}</div>` : ""}
+        ${endorsements.length > 0 ? `<div class="endorsement-badges">${endorsements.join("")}</div>` : ""}
+        ${whyHere ? `<div class="why-here"><span class="why-label">Why it's here</span>${whyHere}</div>` : ""}
       </div>
       ${place.mapsUrl ? `<button type="button" class="open-external-btn" title="Open in Google Maps" aria-label="Open in Google Maps">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
