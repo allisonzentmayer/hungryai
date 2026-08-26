@@ -570,31 +570,39 @@ function currentViewportRadiusMeters() {
 // The marker number is baked into the icon's own SVG (rather than set via
 // Marker's separate `label` option) so it's one image, not two overlapping
 // elements — Maps' BOUNCE animation on setAnimation() only transforms the
-// icon, so a separate label would sit still while the icon jumped.
-function pinMarkerIcon(labelText) {
+// icon, so a separate label would sit still while the icon jumped. Same
+// reasoning is why the hover-grown version below scales via scaledSize
+// (same path/viewBox, just rendered bigger) rather than redrawing — and why
+// the anchor scales proportionally too, so the pin's bottom tip stays
+// planted on the exact same point instead of the icon visibly jumping.
+function pinMarkerIcon(labelText, { hovered = false } = {}) {
+  const fill = hovered ? "#f291b3" : "#d1477a"; // lighter pink on hover
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="30" height="38" viewBox="0 0 30 38">
-    <path d="M15 0C6.716 0 0 6.716 0 15c0 10.5 15 23 15 23s15-12.5 15-23C30 6.716 23.284 0 15 0z" fill="#d1477a"/>
+    <path d="M15 0C6.716 0 0 6.716 0 15c0 10.5 15 23 15 23s15-12.5 15-23C30 6.716 23.284 0 15 0z" fill="${fill}"/>
     <circle cx="15" cy="15" r="6.5" fill="#fff"/>
-    <text x="15" y="15" text-anchor="middle" dominant-baseline="central" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="11" font-weight="700" fill="#d1477a">${labelText}</text>
+    <text x="15" y="15" text-anchor="middle" dominant-baseline="central" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="11" font-weight="700" fill="${fill}">${labelText}</text>
   </svg>`;
+  const scale = hovered ? 1.35 : 1;
   return {
     url: "data:image/svg+xml;charset=UTF-8," + encodeURIComponent(svg),
-    scaledSize: new google.maps.Size(30, 38),
-    anchor: new google.maps.Point(15, 38),
+    scaledSize: new google.maps.Size(30 * scale, 38 * scale),
+    anchor: new google.maps.Point(15 * scale, 38 * scale),
   };
 }
 
 // Michelin/James Beard restaurants get a gold star instead of the standard
 // pink pin, so they're unmistakable on the map at a glance.
-function notableMarkerIcon(labelText) {
+function notableMarkerIcon(labelText, { hovered = false } = {}) {
+  const fill = hovered ? "#f6c15c" : "#f0a020"; // lighter gold on hover — stays in its own color family rather than shifting to pink
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40">
-    <path d="${STAR_PATH}" fill="#f0a020" stroke="#c97f0a" stroke-width="1.2" stroke-linejoin="round"/>
+    <path d="${STAR_PATH}" fill="${fill}" stroke="#c97f0a" stroke-width="1.2" stroke-linejoin="round"/>
     <text x="20" y="21" text-anchor="middle" dominant-baseline="central" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="11" font-weight="700" fill="#3a2233">${labelText}</text>
   </svg>`;
+  const scale = hovered ? 1.3 : 1;
   return {
     url: "data:image/svg+xml;charset=UTF-8," + encodeURIComponent(svg),
-    scaledSize: new google.maps.Size(40, 40),
-    anchor: new google.maps.Point(20, 20),
+    scaledSize: new google.maps.Size(40 * scale, 40 * scale),
+    anchor: new google.maps.Point(20 * scale, 20 * scale),
   };
 }
 
@@ -695,6 +703,19 @@ function renderResults(results, { fit = true } = {}) {
         suppressSearchAreaPrompt = false;
       });
       highlightMarker(place.id);
+    });
+    // Hovering a card grows + lightens its marker (plus a quick bounce) so
+    // scrolling the list gives an obvious "here's where that one is" cue on
+    // the map, without panning the map around while you're just browsing.
+    li.addEventListener("mouseenter", () => {
+      marker.setIcon(place.isNotable ? notableMarkerIcon(String(i + 1), { hovered: true }) : pinMarkerIcon(String(i + 1), { hovered: true }));
+      marker.setZIndex(9999);
+      marker.setAnimation(google.maps.Animation.BOUNCE);
+      setTimeout(() => marker.setAnimation(null), 700);
+    });
+    li.addEventListener("mouseleave", () => {
+      marker.setIcon(place.isNotable ? notableMarkerIcon(String(i + 1)) : pinMarkerIcon(String(i + 1)));
+      marker.setZIndex(place.isNotable ? 999 : 1);
     });
     const externalBtn = li.querySelector(".open-external-btn");
     if (externalBtn) {
