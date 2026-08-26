@@ -212,6 +212,20 @@ body.app-shell {
   appearance: none;
   transition: border-color 0.15s, box-shadow 0.15s;
 }
+.control-row select { padding-right: 1.9rem; }
+/* Native <select>s have no reliable open/closed CSS hook across browsers
+   except :open — swaps the chevron to point up while the dropdown is
+   actually expanded, back down once it's closed. */
+.select-wrap .select-arrow {
+  left: auto;
+  right: 0.85rem;
+  width: 10px;
+  height: 6px;
+  transition: transform 0.15s ease;
+}
+.select-wrap:has(select:open) .select-arrow {
+  transform: translateY(-50%) rotate(180deg);
+}
 .control-row select:focus,
 .zip-input-wrap input:focus {
   outline: none;
@@ -521,6 +535,14 @@ body.app-shell {
   color: var(--muted);
   background: white;
   border: 1px solid var(--line);
+  /* Some tags come from LLM extraction (press mentions), not just the
+     hand-curated Michelin/JBF list — truncate defensively so a longer-than-
+     expected one clips with an ellipsis instead of wrapping and stretching
+     the card. */
+  max-width: 11rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .open-external-btn {
   flex-shrink: 0;

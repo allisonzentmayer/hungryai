@@ -167,7 +167,7 @@ function addMapControls() {
 }
 
 function clearFilters() {
-  document.getElementById("radius").value = "805";
+  document.getElementById("radius").value = "1609";
   document.getElementById("openNow").checked = true;
   document.getElementById("zipInput").value = "";
   if (userLocation) runSearch();
@@ -464,30 +464,34 @@ function currentViewportRadiusMeters() {
   return Math.round(Math.min(halfHeightMiles, halfWidthMiles) * 1609.34);
 }
 
-function pinMarkerIcon() {
+// The marker number is baked into the icon's own SVG (rather than set via
+// Marker's separate `label` option) so it's one image, not two overlapping
+// elements — Maps' BOUNCE animation on setAnimation() only transforms the
+// icon, so a separate label would sit still while the icon jumped.
+function pinMarkerIcon(labelText) {
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="30" height="38" viewBox="0 0 30 38">
     <path d="M15 0C6.716 0 0 6.716 0 15c0 10.5 15 23 15 23s15-12.5 15-23C30 6.716 23.284 0 15 0z" fill="#d1477a"/>
     <circle cx="15" cy="15" r="6.5" fill="#fff"/>
+    <text x="15" y="15" text-anchor="middle" dominant-baseline="central" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="11" font-weight="700" fill="#d1477a">${labelText}</text>
   </svg>`;
   return {
     url: "data:image/svg+xml;charset=UTF-8," + encodeURIComponent(svg),
     scaledSize: new google.maps.Size(30, 38),
     anchor: new google.maps.Point(15, 38),
-    labelOrigin: new google.maps.Point(15, 15),
   };
 }
 
 // Michelin/James Beard restaurants get a gold star instead of the standard
 // pink pin, so they're unmistakable on the map at a glance.
-function notableMarkerIcon() {
+function notableMarkerIcon(labelText) {
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40">
     <path d="${STAR_PATH}" fill="#f0a020" stroke="#c97f0a" stroke-width="1.2" stroke-linejoin="round"/>
+    <text x="20" y="21" text-anchor="middle" dominant-baseline="central" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="11" font-weight="700" fill="#3a2233">${labelText}</text>
   </svg>`;
   return {
     url: "data:image/svg+xml;charset=UTF-8," + encodeURIComponent(svg),
     scaledSize: new google.maps.Size(40, 40),
     anchor: new google.maps.Point(20, 20),
-    labelOrigin: new google.maps.Point(20, 20),
   };
 }
 
@@ -515,13 +519,7 @@ function renderResults(results, { fit = true } = {}) {
     const marker = new google.maps.Marker({
       position: { lat: place.lat, lng: place.lng },
       map,
-      icon: place.isNotable ? notableMarkerIcon() : pinMarkerIcon(),
-      label: {
-        text: String(i + 1),
-        color: place.isNotable ? "#3a2233" : "#d1477a",
-        fontSize: "11px",
-        fontWeight: "700",
-      },
+      icon: place.isNotable ? notableMarkerIcon(String(i + 1)) : pinMarkerIcon(String(i + 1)),
       title: place.name,
       zIndex: place.isNotable ? 999 : 1,
     });
@@ -544,7 +542,7 @@ function renderResults(results, { fit = true } = {}) {
     const badges = (place.awards || [])
       .map((a) => `<span class="award-badge">${escapeHtml(awardBadgeText(a))}</span>`)
       .join("");
-    const traits = (place.tags || [])
+    const traits = [...(place.tags || []), ...(place.pressTags || [])]
       .map((t) => `<span class="trait-badge">${escapeHtml(t)}</span>`)
       .join("");
     const pressMentions = place.pressMentions || [];
@@ -580,11 +578,12 @@ function renderResults(results, { fit = true } = {}) {
       </button>` : ""}
     `;
     li.addEventListener("click", () => {
-      // Focusing one result isn't "I want to search a new area" — don't pop
-      // the search-area button just because this zooms in.
+      // Pan to the result but leave zoom alone — clicking shouldn't change
+      // how far in/out the map is, only Google's native double-click does.
+      // Focusing one result also isn't "I want to search a new area" —
+      // don't pop the search-area button just because we panned.
       suppressSearchAreaPrompt = true;
       map.panTo({ lat: place.lat, lng: place.lng });
-      map.setZoom(17);
       google.maps.event.addListenerOnce(map, "idle", () => {
         suppressSearchAreaPrompt = false;
       });
@@ -614,9 +613,11 @@ function fitMapToResults(results) {
   suppressSearchAreaPrompt = true;
   map.fitBounds(bounds, 48);
   // fitBounds can over-zoom when everything is clustered close together
-  // (or there's only one result) — cap it so we don't end up street-level.
+  // (or there's only one result, e.g. right on page load) — cap it well
+  // short of street-level so it still reads as "here's the neighborhood,"
+  // not a jarring zoom into one block.
   google.maps.event.addListenerOnce(map, "bounds_changed", () => {
-    if (map.getZoom() > 17) map.setZoom(17);
+    if (map.getZoom() > 15) map.setZoom(15);
   });
   google.maps.event.addListenerOnce(map, "idle", () => {
     suppressSearchAreaPrompt = false;
