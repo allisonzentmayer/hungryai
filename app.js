@@ -542,7 +542,11 @@ function renderResults(results, { fit = true } = {}) {
     const badges = (place.awards || [])
       .map((a) => `<span class="award-badge">${escapeHtml(awardBadgeText(a))}</span>`)
       .join("");
-    const traits = [...(place.tags || []), ...(place.pressTags || [])]
+    // Press tags win when a restaurant has both — they're pulled from a
+    // specific, current article, while the curated Michelin/JBF tags are a
+    // static fallback. Showing both stacked to 6 badges was the bug.
+    const traitSource = place.pressTags && place.pressTags.length > 0 ? place.pressTags : place.tags || [];
+    const traits = traitSource
       .map((t) => `<span class="trait-badge">${escapeHtml(t)}</span>`)
       .join("");
     const pressMentions = place.pressMentions || [];
