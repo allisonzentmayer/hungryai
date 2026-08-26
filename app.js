@@ -6,8 +6,12 @@ let markers = [];
 let markersById = new Map();
 let userLocation = null;
 let notableRestaurants = [];
-let searchAreaBtn;
 let lastResults = [];
+// Zoom level as of the last search — lets the auto-search-on-move listener
+// tell "user zoomed, area shown no longer matches what's loaded" apart from
+// "map center barely nudged," even when the center itself hasn't moved.
+let lastSearchZoom = null;
+let autoSearchTimer = null;
 // Set around programmatic camera moves (fitBounds, focusing a result) so the
 // dragend/zoom_changed listeners below can tell those apart from the user
 // actually panning/zooming by hand — only the latter should surface
@@ -32,14 +36,45 @@ fetch("data/notable-restaurants.json")
   .then((data) => { notableRestaurants = data; })
   .catch(() => { notableRestaurants = []; });
 
+// Remembers the last successful geolocation fix so a refresh that hits a
+// transient geolocation failure (denied, timed out, browser having a bad
+// day) falls back to "wherever you were" instead of the hardcoded NYC
+// default — that hardcoded fallback is why a refresh can suddenly show
+// Manhattan to someone who's never been there.
+const LAST_LOCATION_KEY = "hungrypig:lastLocation";
+
+function loadCachedLocation() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(LAST_LOCATION_KEY));
+    if (parsed && typeof parsed.lat === "number" && typeof parsed.lng === "number") {
+      return parsed;
+    }
+  } catch (_err) {
+    // Ignore — corrupt/blocked storage just means no cached fallback.
+  }
+  return null;
+}
+
+function cacheLocation(loc) {
+  try {
+    localStorage.setItem(LAST_LOCATION_KEY, JSON.stringify({ lat: loc.lat, lng: loc.lng }));
+  } catch (_err) {
+    // Ignore — private browsing / storage blocked, just skip caching.
+  }
+}
+
 // Pig mascot click behavior (the "Oink!" bubble) lives in mascot-oink.js,
 // loaded alongside this file — shared with about.html, which doesn't load
 // the rest of this map/search-specific script.
 
 // Called by the Google Maps script tag once it loads.
 function initMap() {
+  // Prefer wherever the user was last time over the hardcoded NYC fallback
+  // — avoids a jarring flash-to-Manhattan on every load while geolocation
+  // is still resolving (or if it fails).
+  const cachedLocation = loadCachedLocation();
   map = new google.maps.Map(document.getElementById("map"), {
-    center: { lat: 40.7128, lng: -74.006 }, // fallback: NYC, replaced once we get real location
+    center: cachedLocation || { lat: 40.7128, lng: -74.006 }, // fallback: NYC, replaced once we get real location
     zoom: 15,
     mapTypeControl: false,
     zoomControl: false,
@@ -94,18 +129,30 @@ function initMap() {
     runSearch();
   });
 
-  // Offer to re-search once the user has actually panned away from wherever
-  // the current results are centered on, or changed the zoom at all (either
-  // one means what's on screen no longer matches what was last searched).
-  map.addListener("dragend", () => {
-    if (!userLocation || !searchAreaBtn || suppressSearchAreaPrompt) return;
+  // Auto re-search once the map settles somewhere that no longer matches
+  // what's loaded — either panned far enough away, or zoomed to a
+  // different level (same center, different-sized area). "idle" fires once
+  // per gesture (drag, scroll-zoom, pinch, keyboard pan) after it settles,
+  // rather than firing repeatedly mid-gesture. suppressSearchAreaPrompt
+  // tells our own programmatic moves (fitBounds, panTo a result, zip
+  // recenter) apart from the user actually moving the map by hand — only
+  // the latter should trigger a re-search.
+  map.addListener("idle", () => {
+    if (!userLocation || suppressSearchAreaPrompt) return;
     const center = map.getCenter();
     const moved = milesBetween(userLocation, { lat: center.lat(), lng: center.lng() });
-    searchAreaBtn.hidden = moved < 0.3;
-  });
-  map.addListener("zoom_changed", () => {
-    if (!userLocation || !searchAreaBtn || suppressSearchAreaPrompt) return;
-    searchAreaBtn.hidden = false;
+    const zoomChanged = lastSearchZoom !== null && map.getZoom() !== lastSearchZoom;
+    if (moved < 0.3 && !zoomChanged) return;
+
+    clearTimeout(autoSearchTimer);
+    autoSearchTimer = setTimeout(() => {
+      userLocation = { lat: center.lat(), lng: center.lng() };
+      hideLocationButton();
+      // Search exactly what's currently visible — the radius dropdown is
+      // ignored here — and don't let the search re-fit/zoom the map
+      // afterward, since the whole point was to search this specific view.
+      runSearch({ radiusOverrideMeters: currentViewportRadiusMeters(), fit: false });
+    }, 500);
   });
 }
 
@@ -148,22 +195,6 @@ function addMapControls() {
   zoomOut.addEventListener("click", () => map.setZoom(map.getZoom() - 1));
   zoomStack.append(zoomIn, zoomOut);
   map.controls[google.maps.ControlPosition.RIGHT_BOTTOM].push(zoomStack);
-
-  searchAreaBtn = document.createElement("button");
-  searchAreaBtn.type = "button";
-  searchAreaBtn.className = "search-area-btn";
-  searchAreaBtn.textContent = "Search this area";
-  searchAreaBtn.hidden = true;
-  searchAreaBtn.addEventListener("click", () => {
-    const center = map.getCenter();
-    userLocation = { lat: center.lat(), lng: center.lng() };
-    hideLocationButton();
-    // Search exactly what's currently visible — the radius dropdown is
-    // ignored here — and don't let the search re-fit/zoom the map afterward,
-    // since the whole point was to search this specific view.
-    runSearch({ radiusOverrideMeters: currentViewportRadiusMeters(), fit: false });
-  });
-  map.controls[google.maps.ControlPosition.TOP_CENTER].push(searchAreaBtn);
 }
 
 function clearFilters() {
@@ -211,6 +242,7 @@ function locateUser() {
         clearTimeout(fallbackTimer);
         userLocation = { lat: pos.coords.latitude, lng: pos.coords.longitude };
         map.setCenter(userLocation);
+        cacheLocation(userLocation);
         resolve();
       },
       (err) => {
@@ -289,10 +321,24 @@ function attemptLocate() {
     .then(() => {
       setStatus("");
       hideLocationButton();
-      runSearch();
+      runInitialSearch();
     })
     .catch((err) => {
-      if (err && err.code === 1) {
+      // A fresh fix failed — fall back to wherever we found them last time
+      // rather than leaving the map on the hardcoded NYC default. The
+      // location button stays visible either way, since this wasn't an
+      // actual successful fix.
+      const cachedLocation = loadCachedLocation();
+      if (cachedLocation) {
+        userLocation = cachedLocation;
+        map.setCenter(cachedLocation);
+        setStatus("Couldn't get a fresh location — showing your last known area.");
+        runInitialSearch();
+        // We do have somewhere to show them, so "enable location access"
+        // would be a confusing ask — offer a fresh, precise fix instead.
+        showLocationButton("Update my location");
+        return;
+      } else if (err && err.code === 1) {
         setStatus("Location access denied — enable it for this site, then try again, or enter a zip code below.");
       } else if (err && err.code === 3) {
         setStatus("Location took too long to find — try again, or enter a zip code below.");
@@ -303,8 +349,62 @@ function attemptLocate() {
     });
 }
 
-function showLocationButton() {
-  document.getElementById("enableLocationBtn").hidden = false;
+// Radius options (meters) offered in the dropdown, ascending — plus a final,
+// not-selectable-in-the-UI regional-scale ceiling to try before giving up.
+// Google's own cap is 50km (see search-restaurants.js); no point trying past it.
+const RADIUS_OPTIONS_METERS = [402, 805, 1609, 4828];
+const MAX_SEARCH_RADIUS_METERS = 50000;
+
+// The initial "where am I" search on page load. Press-mentioned restaurants
+// are sparse enough that the default radius can easily come up empty
+// outside a covered metro — rather than showing "0 places found" to a new
+// user, silently widen behind the scenes (no flashing empty states) until
+// something turns up.
+//
+// The remaining radius tiers are fetched IN PARALLEL, not one at a time —
+// an earlier version tried them sequentially and that could take 15+
+// seconds (each tier waiting on the previous one's full round trip before
+// even starting), most noticeable on a refresh where geolocation resolves
+// instantly from cache and has no delay of its own to mask the wait. Firing
+// them all at once bounds the wait to roughly one round trip, and whichever
+// tier wins is rendered straight from its own response — no redundant
+// re-fetch at the winning radius afterward.
+async function runInitialSearch() {
+  await runSearch();
+  if (lastResults.length > 0) return;
+
+  const radiusSelect = document.getElementById("radius");
+  const startRadius = Number(radiusSelect.value);
+  const openNow = document.getElementById("openNow").checked;
+  const candidates = [...RADIUS_OPTIONS_METERS.filter((r) => r > startRadius), MAX_SEARCH_RADIUS_METERS];
+
+  const attempts = await Promise.all(
+    candidates.map(async (radius) => {
+      try {
+        const url = `/.netlify/functions/search-restaurants?lat=${userLocation.lat}&lng=${userLocation.lng}&radius=${radius}&openNow=${openNow}`;
+        const res = await fetch(url);
+        if (!res.ok) return null;
+        const data = await res.json();
+        return { radius, results: data.results || [] };
+      } catch (_err) {
+        return null;
+      }
+    })
+  );
+
+  const winner = attempts
+    .filter((a) => a && a.results.length > 0)
+    .sort((a, b) => a.radius - b.radius)[0];
+  if (!winner) return; // genuinely nothing within the cap — leave the empty result as-is
+
+  if (RADIUS_OPTIONS_METERS.includes(winner.radius)) radiusSelect.value = String(winner.radius);
+  await runSearch({ radiusOverrideMeters: winner.radius, resultsOverride: winner.results });
+}
+
+function showLocationButton(label = "Enable location access") {
+  const btn = document.getElementById("enableLocationBtn");
+  btn.textContent = label;
+  btn.hidden = false;
 }
 
 function hideLocationButton() {
@@ -315,7 +415,11 @@ function setStatus(msg) {
   document.getElementById("status").textContent = msg;
 }
 
-async function runSearch({ radiusOverrideMeters, fit = true } = {}) {
+// resultsOverride skips the fetch entirely and renders already-fetched
+// results straight through — used by runInitialSearch() when it's already
+// fetched the winning radius's data itself (via its own parallel probing)
+// and re-fetching the same thing here would just be a redundant round trip.
+async function runSearch({ radiusOverrideMeters, fit = true, resultsOverride } = {}) {
   if (!userLocation) {
     setStatus("Set a location first — allow location access or click the map.");
     return;
@@ -323,25 +427,30 @@ async function runSearch({ radiusOverrideMeters, fit = true } = {}) {
 
   const radius = radiusOverrideMeters ?? document.getElementById("radius").value;
   const openNow = document.getElementById("openNow").checked;
+  lastSearchZoom = map.getZoom();
 
   setStatus("Finding good places…");
   document.getElementById("searchBtn").disabled = true;
-  if (searchAreaBtn) searchAreaBtn.hidden = true;
-
-  // No minRating param — we're leaning on the press-mention boost + weighted
-  // score to surface quality instead of a hard Google-star-rating cutoff.
-  const url = `/.netlify/functions/search-restaurants?lat=${userLocation.lat}&lng=${userLocation.lng}&radius=${radius}&openNow=${openNow}`;
 
   try {
-    const res = await fetch(url);
-    const data = await res.json();
+    let results;
+    if (resultsOverride) {
+      results = resultsOverride;
+    } else {
+      // No minRating param — we're leaning on the press-mention boost +
+      // weighted score to surface quality instead of a hard rating cutoff.
+      const url = `/.netlify/functions/search-restaurants?lat=${userLocation.lat}&lng=${userLocation.lng}&radius=${radius}&openNow=${openNow}`;
+      const res = await fetch(url);
+      const data = await res.json();
 
-    if (!res.ok) {
-      setStatus(`Something went wrong: ${data.error || "unknown error"}`);
-      return;
+      if (!res.ok) {
+        setStatus(`Something went wrong: ${data.error || "unknown error"}`);
+        return;
+      }
+      results = data.results || [];
     }
 
-    const matched = combineResults(data.results || [], userLocation);
+    const matched = combineResults(results, userLocation);
     renderResults(matched, { fit });
     setStatus("");
     document.getElementById("resultsCount").textContent = `${matched.length} places found`;
@@ -467,31 +576,39 @@ function currentViewportRadiusMeters() {
 // The marker number is baked into the icon's own SVG (rather than set via
 // Marker's separate `label` option) so it's one image, not two overlapping
 // elements — Maps' BOUNCE animation on setAnimation() only transforms the
-// icon, so a separate label would sit still while the icon jumped.
-function pinMarkerIcon(labelText) {
+// icon, so a separate label would sit still while the icon jumped. Same
+// reasoning is why the hover-grown version below scales via scaledSize
+// (same path/viewBox, just rendered bigger) rather than redrawing — and why
+// the anchor scales proportionally too, so the pin's bottom tip stays
+// planted on the exact same point instead of the icon visibly jumping.
+function pinMarkerIcon(labelText, { hovered = false } = {}) {
+  const fill = hovered ? "#f291b3" : "#d1477a"; // lighter pink on hover
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="30" height="38" viewBox="0 0 30 38">
-    <path d="M15 0C6.716 0 0 6.716 0 15c0 10.5 15 23 15 23s15-12.5 15-23C30 6.716 23.284 0 15 0z" fill="#d1477a"/>
+    <path d="M15 0C6.716 0 0 6.716 0 15c0 10.5 15 23 15 23s15-12.5 15-23C30 6.716 23.284 0 15 0z" fill="${fill}"/>
     <circle cx="15" cy="15" r="6.5" fill="#fff"/>
-    <text x="15" y="15" text-anchor="middle" dominant-baseline="central" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="11" font-weight="700" fill="#d1477a">${labelText}</text>
+    <text x="15" y="15" text-anchor="middle" dominant-baseline="central" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="11" font-weight="700" fill="${fill}">${labelText}</text>
   </svg>`;
+  const scale = hovered ? 1.35 : 1;
   return {
     url: "data:image/svg+xml;charset=UTF-8," + encodeURIComponent(svg),
-    scaledSize: new google.maps.Size(30, 38),
-    anchor: new google.maps.Point(15, 38),
+    scaledSize: new google.maps.Size(30 * scale, 38 * scale),
+    anchor: new google.maps.Point(15 * scale, 38 * scale),
   };
 }
 
 // Michelin/James Beard restaurants get a gold star instead of the standard
 // pink pin, so they're unmistakable on the map at a glance.
-function notableMarkerIcon(labelText) {
+function notableMarkerIcon(labelText, { hovered = false } = {}) {
+  const fill = hovered ? "#f6c15c" : "#f0a020"; // lighter gold on hover — stays in its own color family rather than shifting to pink
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40">
-    <path d="${STAR_PATH}" fill="#f0a020" stroke="#c97f0a" stroke-width="1.2" stroke-linejoin="round"/>
+    <path d="${STAR_PATH}" fill="${fill}" stroke="#c97f0a" stroke-width="1.2" stroke-linejoin="round"/>
     <text x="20" y="21" text-anchor="middle" dominant-baseline="central" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="11" font-weight="700" fill="#3a2233">${labelText}</text>
   </svg>`;
+  const scale = hovered ? 1.3 : 1;
   return {
     url: "data:image/svg+xml;charset=UTF-8," + encodeURIComponent(svg),
-    scaledSize: new google.maps.Size(40, 40),
-    anchor: new google.maps.Point(20, 20),
+    scaledSize: new google.maps.Size(40 * scale, 40 * scale),
+    anchor: new google.maps.Point(20 * scale, 20 * scale),
   };
 }
 
@@ -542,7 +659,11 @@ function renderResults(results, { fit = true } = {}) {
     const badges = (place.awards || [])
       .map((a) => `<span class="award-badge">${escapeHtml(awardBadgeText(a))}</span>`)
       .join("");
-    const traits = [...(place.tags || []), ...(place.pressTags || [])]
+    // Press tags win when a restaurant has both — they're pulled from a
+    // specific, current article, while the curated Michelin/JBF tags are a
+    // static fallback. Showing both stacked to 6 badges was the bug.
+    const traitSource = place.pressTags && place.pressTags.length > 0 ? place.pressTags : place.tags || [];
+    const traits = traitSource
       .map((t) => `<span class="trait-badge">${escapeHtml(t)}</span>`)
       .join("");
     const pressMentions = place.pressMentions || [];
@@ -588,6 +709,19 @@ function renderResults(results, { fit = true } = {}) {
         suppressSearchAreaPrompt = false;
       });
       highlightMarker(place.id);
+    });
+    // Hovering a card grows + lightens its marker (plus a quick bounce) so
+    // scrolling the list gives an obvious "here's where that one is" cue on
+    // the map, without panning the map around while you're just browsing.
+    li.addEventListener("mouseenter", () => {
+      marker.setIcon(place.isNotable ? notableMarkerIcon(String(i + 1), { hovered: true }) : pinMarkerIcon(String(i + 1), { hovered: true }));
+      marker.setZIndex(9999);
+      marker.setAnimation(google.maps.Animation.BOUNCE);
+      setTimeout(() => marker.setAnimation(null), 700);
+    });
+    li.addEventListener("mouseleave", () => {
+      marker.setIcon(place.isNotable ? notableMarkerIcon(String(i + 1)) : pinMarkerIcon(String(i + 1)));
+      marker.setZIndex(place.isNotable ? 999 : 1);
     });
     const externalBtn = li.querySelector(".open-external-btn");
     if (externalBtn) {
