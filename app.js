@@ -30,6 +30,28 @@ let suppressSearchAreaPrompt = false;
 // an interruption partway through needs to survive across all of them.
 let searchInterruptedByUser = false;
 
+// Wraps a programmatic camera move (fitBounds, panTo, setZoom/setCenter) so
+// it doesn't get mistaken for the user dragging/zooming by hand.
+// suppressSearchAreaPrompt normally clears itself on the next "idle" event
+// once the move settles — but in testing, that "idle" occasionally didn't
+// fire promptly after some fitBounds + zoom-cap combinations, which left
+// the flag stuck true and silently broke auto-search-on-scroll and zoom
+// persistence until some unrelated later map event happened to trigger it.
+// The timeout is a backstop for that: whichever fires first, idle or the
+// timeout, clears it — safe either way since clearing twice is a no-op.
+function withSuppressedInteraction(moveFn) {
+  suppressSearchAreaPrompt = true;
+  moveFn();
+  let cleared = false;
+  const clear = () => {
+    if (cleared) return;
+    cleared = true;
+    suppressSearchAreaPrompt = false;
+  };
+  google.maps.event.addListenerOnce(map, "idle", clear);
+  setTimeout(clear, 1500);
+}
+
 // Curated Michelin/James Beard restaurants (data/notable-restaurants.json).
 // Ones that also turn up in the live Places search always show (matched by
 // id, regardless of distance); beyond that, only ones already inside the
@@ -75,6 +97,29 @@ function cacheLocation(loc) {
   }
 }
 
+// Remembers radius/openNow/zoom across a refresh — without this, "Open now"
+// resets to checked and the map resets to a computed fit-to-results zoom
+// every single load, ignoring whatever the user actually had it set to.
+const SETTINGS_KEY = "hungrypig:settings";
+
+function loadSettings() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(SETTINGS_KEY));
+    if (parsed && typeof parsed === "object") return parsed;
+  } catch (_err) {
+    // Ignore — corrupt/blocked storage just means defaults apply.
+  }
+  return {};
+}
+
+function saveSettings(patch) {
+  try {
+    localStorage.setItem(SETTINGS_KEY, JSON.stringify({ ...loadSettings(), ...patch }));
+  } catch (_err) {
+    // Ignore — private browsing / storage blocked, just skip saving.
+  }
+}
+
 // Pig mascot click behavior (the "Oink!" bubble) lives in mascot-oink.js,
 // loaded alongside this file — shared with about.html, which doesn't load
 // the rest of this map/search-specific script.
@@ -85,14 +130,21 @@ function initMap() {
   // — avoids a jarring flash-to-Manhattan on every load while geolocation
   // is still resolving (or if it fails).
   const cachedLocation = loadCachedLocation();
+  const savedSettings = loadSettings();
   map = new google.maps.Map(document.getElementById("map"), {
     center: cachedLocation || { lat: 40.7128, lng: -74.006 }, // fallback: NYC, replaced once we get real location
-    zoom: 15,
+    zoom: savedSettings.zoom ?? 15,
     mapTypeControl: false,
     zoomControl: false,
     streetViewControl: false,
     fullscreenControl: false,
   });
+
+  // Applied before the first search fires below, so that search (and its
+  // fit-to-results zoom) already reflects what the user had last time
+  // instead of resetting to "Open now" checked / the default radius.
+  if (savedSettings.radius) document.getElementById("radius").value = String(savedSettings.radius);
+  if (typeof savedSettings.openNow === "boolean") document.getElementById("openNow").checked = savedSettings.openNow;
 
   addMapControls();
 
@@ -128,6 +180,10 @@ function initMap() {
   // search trigger.
   ["radius", "openNow"].forEach((id) => {
     document.getElementById(id).addEventListener("change", () => {
+      saveSettings({
+        radius: Number(document.getElementById("radius").value),
+        openNow: document.getElementById("openNow").checked,
+      });
       if (!userLocation) return;
       searchInterruptedByUser = false;
       runSearch();
@@ -151,7 +207,12 @@ function initMap() {
     if (!suppressSearchAreaPrompt) searchInterruptedByUser = true;
   });
   map.addListener("zoom_changed", () => {
-    if (!suppressSearchAreaPrompt) searchInterruptedByUser = true;
+    if (suppressSearchAreaPrompt) return;
+    searchInterruptedByUser = true;
+    // Saved immediately here rather than waiting for "idle" — a user could
+    // refresh within a second of zooming, sooner than idle (or its timeout
+    // backstop) would otherwise get around to it.
+    saveSettings({ zoom: map.getZoom() });
   });
 
   // Auto re-search once the map settles somewhere that no longer matches
@@ -226,6 +287,7 @@ function clearFilters() {
   document.getElementById("radius").value = "1609";
   document.getElementById("openNow").checked = true;
   document.getElementById("zipInput").value = "";
+  saveSettings({ radius: 1609, openNow: true });
   if (!userLocation) return;
   searchInterruptedByUser = false;
   runSearch();
@@ -312,9 +374,10 @@ function attemptZipSearch() {
     .then((loc) => {
       searchInterruptedByUser = false;
       userLocation = loc;
-      suppressSearchAreaPrompt = true;
-      map.setCenter(loc);
-      map.setZoom(14);
+      withSuppressedInteraction(() => {
+        map.setCenter(loc);
+        map.setZoom(14);
+      });
       setStatus("");
       runSearch();
     })
@@ -399,6 +462,21 @@ const MAX_SEARCH_RADIUS_METERS = 50000;
 // re-fetch at the winning radius afterward.
 async function runInitialSearch() {
   searchInterruptedByUser = false;
+  await runInitialSearchAttempts();
+
+  // fitMapToResults() just computed its own "fit everything in" zoom — but
+  // if the user has a remembered zoom preference, that should win over the
+  // computed one, same as it does for radius/openNow. Skipped if they've
+  // already taken over the map themselves in the meantime (in which case
+  // wherever they've navigated to takes priority, not a remembered zoom
+  // from before).
+  const savedZoom = loadSettings().zoom;
+  if (savedZoom != null && !searchInterruptedByUser) {
+    withSuppressedInteraction(() => map.setZoom(savedZoom));
+  }
+}
+
+async function runInitialSearchAttempts() {
   await runSearch();
   if (lastResults.length > 0) return;
 
@@ -736,17 +814,16 @@ function renderResults(results, { fit = true } = {}) {
       (a) => `<span class="endorsement-badge">${escapeHtml(awardBadgeText(a))}</span>`
     );
     // PIG PICK is reserved for actual cross-source consensus — showing up
-    // in more than one independent write-up, not just one. A single
-    // mention still gets credited, just without the stamp, since that's a
-    // meaningfully weaker signal (this mirrors the same "repetition =
-    // consensus" logic the backend already uses for score boosting).
+    // in more than one independent write-up, not just one (mirrors the
+    // same "repetition = consensus" logic the backend already uses for
+    // score boosting). A single mention doesn't get a badge at all rather
+    // than a softer fallback — it still feeds the score boost and the "why
+    // it's here" line, just not this stamp. Never names the source itself
+    // — the methodology is part of the brand, not a citation trail.
     const pressMentions = place.pressMentions || [];
-    const pressSources = [...new Set(pressMentions.map((m) => m.source_name || "the press"))];
-    if (pressSources.length >= 2) {
-      const sourceTitle = escapeHtml(pressSources.join(", "));
-      endorsements.push(`<span class="endorsement-badge" title="${sourceTitle}">🐽 PIG PICK</span>`);
-    } else if (pressSources.length === 1) {
-      endorsements.push(`<span class="endorsement-badge">Spotted in ${escapeHtml(pressSources[0])}</span>`);
+    const pressSources = new Set(pressMentions.map((m) => m.source_name || "the press"));
+    if (pressSources.size >= 2) {
+      endorsements.push(`<span class="endorsement-badge">🐽 PIG PICK</span>`);
     }
 
     // Press tags win when a restaurant has both — they're pulled from a
@@ -778,11 +855,7 @@ function renderResults(results, { fit = true } = {}) {
       // how far in/out the map is, only Google's native double-click does.
       // Focusing one result also isn't "I want to search a new area" —
       // don't pop the search-area button just because we panned.
-      suppressSearchAreaPrompt = true;
-      map.panTo({ lat: place.lat, lng: place.lng });
-      google.maps.event.addListenerOnce(map, "idle", () => {
-        suppressSearchAreaPrompt = false;
-      });
+      withSuppressedInteraction(() => map.panTo({ lat: place.lat, lng: place.lng }));
       highlightMarker(place.id);
     });
     // Hovering a card triggers the same emphasis clicking it (or its map
@@ -820,17 +893,15 @@ function fitMapToResults(results) {
   results.forEach((r) => bounds.extend({ lat: r.lat, lng: r.lng }));
   if (bounds.isEmpty()) return;
 
-  suppressSearchAreaPrompt = true;
-  map.fitBounds(bounds, 48);
-  // fitBounds can over-zoom when everything is clustered close together
-  // (or there's only one result, e.g. right on page load) — cap it well
-  // short of street-level so it still reads as "here's the neighborhood,"
-  // not a jarring zoom into one block.
-  google.maps.event.addListenerOnce(map, "bounds_changed", () => {
-    if (map.getZoom() > 15) map.setZoom(15);
-  });
-  google.maps.event.addListenerOnce(map, "idle", () => {
-    suppressSearchAreaPrompt = false;
+  withSuppressedInteraction(() => {
+    map.fitBounds(bounds, 48);
+    // fitBounds can over-zoom when everything is clustered close together
+    // (or there's only one result, e.g. right on page load) — cap it well
+    // short of street-level so it still reads as "here's the neighborhood,"
+    // not a jarring zoom into one block.
+    google.maps.event.addListenerOnce(map, "bounds_changed", () => {
+      if (map.getZoom() > 15) map.setZoom(15);
+    });
   });
 }
 
