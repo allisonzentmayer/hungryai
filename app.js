@@ -32,14 +32,45 @@ fetch("data/notable-restaurants.json")
   .then((data) => { notableRestaurants = data; })
   .catch(() => { notableRestaurants = []; });
 
+// Remembers the last successful geolocation fix so a refresh that hits a
+// transient geolocation failure (denied, timed out, browser having a bad
+// day) falls back to "wherever you were" instead of the hardcoded NYC
+// default — that hardcoded fallback is why a refresh can suddenly show
+// Manhattan to someone who's never been there.
+const LAST_LOCATION_KEY = "hungrypig:lastLocation";
+
+function loadCachedLocation() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(LAST_LOCATION_KEY));
+    if (parsed && typeof parsed.lat === "number" && typeof parsed.lng === "number") {
+      return parsed;
+    }
+  } catch (_err) {
+    // Ignore — corrupt/blocked storage just means no cached fallback.
+  }
+  return null;
+}
+
+function cacheLocation(loc) {
+  try {
+    localStorage.setItem(LAST_LOCATION_KEY, JSON.stringify({ lat: loc.lat, lng: loc.lng }));
+  } catch (_err) {
+    // Ignore — private browsing / storage blocked, just skip caching.
+  }
+}
+
 // Pig mascot click behavior (the "Oink!" bubble) lives in mascot-oink.js,
 // loaded alongside this file — shared with about.html, which doesn't load
 // the rest of this map/search-specific script.
 
 // Called by the Google Maps script tag once it loads.
 function initMap() {
+  // Prefer wherever the user was last time over the hardcoded NYC fallback
+  // — avoids a jarring flash-to-Manhattan on every load while geolocation
+  // is still resolving (or if it fails).
+  const cachedLocation = loadCachedLocation();
   map = new google.maps.Map(document.getElementById("map"), {
-    center: { lat: 40.7128, lng: -74.006 }, // fallback: NYC, replaced once we get real location
+    center: cachedLocation || { lat: 40.7128, lng: -74.006 }, // fallback: NYC, replaced once we get real location
     zoom: 15,
     mapTypeControl: false,
     zoomControl: false,
@@ -211,6 +242,7 @@ function locateUser() {
         clearTimeout(fallbackTimer);
         userLocation = { lat: pos.coords.latitude, lng: pos.coords.longitude };
         map.setCenter(userLocation);
+        cacheLocation(userLocation);
         resolve();
       },
       (err) => {
@@ -292,7 +324,17 @@ function attemptLocate() {
       runSearch();
     })
     .catch((err) => {
-      if (err && err.code === 1) {
+      // A fresh fix failed — fall back to wherever we found them last time
+      // rather than leaving the map on the hardcoded NYC default. The
+      // location button stays visible either way, since this wasn't an
+      // actual successful fix.
+      const cachedLocation = loadCachedLocation();
+      if (cachedLocation) {
+        userLocation = cachedLocation;
+        map.setCenter(cachedLocation);
+        setStatus("Couldn't get a fresh location — showing your last known area.");
+        runSearch();
+      } else if (err && err.code === 1) {
         setStatus("Location access denied — enable it for this site, then try again, or enter a zip code below.");
       } else if (err && err.code === 3) {
         setStatus("Location took too long to find — try again, or enter a zip code below.");
