@@ -334,6 +334,10 @@ function attemptLocate() {
         map.setCenter(cachedLocation);
         setStatus("Couldn't get a fresh location — showing your last known area.");
         runInitialSearch();
+        // We do have somewhere to show them, so "enable location access"
+        // would be a confusing ask — offer a fresh, precise fix instead.
+        showLocationButton("Update my location");
+        return;
       } else if (err && err.code === 1) {
         setStatus("Location access denied — enable it for this site, then try again, or enter a zip code below.");
       } else if (err && err.code === 3) {
@@ -397,8 +401,10 @@ async function runInitialSearch() {
   await runSearch({ radiusOverrideMeters: winner.radius, resultsOverride: winner.results });
 }
 
-function showLocationButton() {
-  document.getElementById("enableLocationBtn").hidden = false;
+function showLocationButton(label = "Enable location access") {
+  const btn = document.getElementById("enableLocationBtn");
+  btn.textContent = label;
+  btn.hidden = false;
 }
 
 function hideLocationButton() {
