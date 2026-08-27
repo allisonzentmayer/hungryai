@@ -4,30 +4,6 @@
 let map;
 let markers = [];
 let markersById = new Map();
-// Assigns each restaurant a badge number the first time it's seen and keeps
-// it forever (for this page load), so the number on a pin/card stays put
-// across pans/zooms even though the results array gets re-sorted by
-// distance from the (moving) map center on every re-search. Without this,
-// the same restaurant could go from "#3" to "#7" just because the map
-// recentered, with nothing about the restaurant itself having changed.
-let badgeNumberByPlaceId = new Map();
-let nextBadgeNumber = 1;
-function badgeNumberFor(placeId) {
-  if (!badgeNumberByPlaceId.has(placeId)) {
-    badgeNumberByPlaceId.set(placeId, nextBadgeNumber++);
-  }
-  return badgeNumberByPlaceId.get(placeId);
-}
-// Called whenever the user starts looking at a genuinely different place
-// (zip search, map click, locate-me/page load) — as opposed to panning/
-// zooming/filtering around the same area, which should keep numbers stable.
-// Without this, numbering would just keep climbing forever within a
-// session, so a brand new search could start at "#44" with only a handful
-// of pins on screen, looking broken.
-function resetBadgeNumbers() {
-  badgeNumberByPlaceId = new Map();
-  nextBadgeNumber = 1;
-}
 let userLocation = null;
 let notableRestaurants = [];
 let lastResults = [];
@@ -221,7 +197,6 @@ function initMap() {
     searchInterruptedByUser = false;
     userLocation = { lat: e.latLng.lat(), lng: e.latLng.lng() };
     hideLocationButton();
-    resetBadgeNumbers();
     runSearch();
   });
 
@@ -404,7 +379,6 @@ function attemptZipSearch() {
         map.setZoom(14);
       });
       setStatus("");
-      resetBadgeNumbers();
       runSearch();
     })
     .catch(() => {
@@ -488,7 +462,6 @@ const MAX_SEARCH_RADIUS_METERS = 50000;
 // re-fetch at the winning radius afterward.
 async function runInitialSearch() {
   searchInterruptedByUser = false;
-  resetBadgeNumbers();
   await runInitialSearchAttempts();
 
   // fitMapToResults() just computed its own "fit everything in" zoom — but
@@ -717,12 +690,17 @@ function currentViewportRadiusMeters() {
 // planted on the exact same point instead of the icon visibly jumping.
 function pinMarkerIcon(labelText, { hovered = false } = {}) {
   const fill = hovered ? "#f291b3" : "#d1477a"; // lighter pink on hover
-  // White circle sized to comfortably fit 2-digit numbers (not just 1) —
-  // badge numbers persist and climb across a browsing session (see
-  // badgeNumberFor/resetBadgeNumbers), so double digits are common, not a
-  // rare edge case.
+  // Little pig ears peeking above the head (on-brand for HungryPig) plus a
+  // glossy highlight, instead of a plain flat teardrop — same numbering,
+  // friendlier package. White circle sized to comfortably fit 2-digit
+  // numbers, since a list of 10+ results is common.
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="30" height="38" viewBox="0 0 30 38">
+    <circle cx="5.5" cy="5" r="4.3" fill="${fill}"/>
+    <circle cx="24.5" cy="5" r="4.3" fill="${fill}"/>
+    <circle cx="5.5" cy="5.8" r="1.9" fill="#fbd7e1"/>
+    <circle cx="24.5" cy="5.8" r="1.9" fill="#fbd7e1"/>
     <path d="M15 0C6.716 0 0 6.716 0 15c0 10.5 15 23 15 23s15-12.5 15-23C30 6.716 23.284 0 15 0z" fill="${fill}"/>
+    <ellipse cx="10.5" cy="9" rx="5" ry="3.5" fill="#fff" opacity="0.25"/>
     <circle cx="15" cy="15" r="8" fill="#fff"/>
     <text x="15" y="15" text-anchor="middle" dominant-baseline="central" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="9.5" font-weight="700" letter-spacing="-0.3" fill="${fill}">${labelText}</text>
   </svg>`;
@@ -740,6 +718,7 @@ function notableMarkerIcon(labelText, { hovered = false } = {}) {
   const fill = hovered ? "#f6c15c" : "#f0a020"; // lighter gold on hover — stays in its own color family rather than shifting to pink
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40">
     <path d="${STAR_PATH}" fill="${fill}" stroke="#c97f0a" stroke-width="1.2" stroke-linejoin="round"/>
+    <ellipse cx="15" cy="12" rx="5" ry="3" fill="#fff" opacity="0.3"/>
     <text x="20" y="21" text-anchor="middle" dominant-baseline="central" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="9.5" font-weight="700" letter-spacing="-0.3" fill="#3a2233">${labelText}</text>
   </svg>`;
   const scale = hovered ? 1.3 : 1;
@@ -759,7 +738,13 @@ function awardBadgeText(award) {
 // Toggles a marker's "here's this one" look — grown + lightened icon and a
 // higher z-index so it doesn't get lost behind neighbors. Needs the
 // result's index (for its label number) and isNotable (pin vs star), found
-// by matching id against the currently-rendered results.
+// by matching id against the currently-rendered results. Numbers always
+// match the list's current top-to-bottom order (distance/relevance), not a
+// stable per-restaurant identity — deliberate choice: a restaurant's number
+// can shift when you pan/zoom and it re-ranks, in exchange for the list
+// never showing badges out of order (e.g. 8, 10, 6) the way a persistent
+// numbering scheme would once results re-sort by distance from the (moved)
+// map center.
 function setMarkerEmphasized(id, emphasized) {
   const marker = markersById.get(id);
   if (!marker) return;
@@ -795,8 +780,8 @@ function renderResults(results, { fit = true } = {}) {
   const list = document.getElementById("resultsList");
   list.innerHTML = "";
 
-  results.forEach((place) => {
-    const num = badgeNumberFor(place.id);
+  results.forEach((place, i) => {
+    const num = i + 1;
 
     // Marker
     const marker = new google.maps.Marker({

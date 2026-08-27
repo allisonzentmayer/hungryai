@@ -488,8 +488,7 @@ body.app-shell {
 }
 /* min-width + pill radius (not a fixed circle) so 2-digit numbers get room
    to breathe instead of being squeezed into a circle sized for one digit —
-   badge numbers persist across pans/zooms and climb over a session (see
-   badgeNumberFor in app.js), so double digits are the common case. */
+   a list of 10+ results is common. */
 .result-badge {
   position: relative;
   flex-shrink: 0;
@@ -497,7 +496,10 @@ body.app-shell {
   height: 28px;
   padding: 0 5px;
   border-radius: 999px;
-  background: var(--pink-deep);
+  /* Glossy little "gumball" look — matches the highlight added to the map
+     pins, so the badge on a card reads as the same friendly object as its
+     pin rather than a flat, separate style. */
+  background: radial-gradient(circle at 32% 28%, var(--pink-mid), var(--pink-deep) 72%);
   color: white;
   font-size: 0.76rem;
   font-weight: 700;
