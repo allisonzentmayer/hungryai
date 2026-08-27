@@ -486,27 +486,33 @@ body.app-shell {
 .notable-card:hover, .notable-card.highlighted {
   background: linear-gradient(to right, rgba(240, 160, 32, 0.14), var(--pink-pale) 70%);
 }
+/* min-width + pill radius (not a fixed circle) so 2-digit numbers get room
+   to breathe instead of being squeezed into a circle sized for one digit —
+   badge numbers persist across pans/zooms and climb over a session (see
+   badgeNumberFor in app.js), so double digits are the common case. */
 .result-badge {
   position: relative;
   flex-shrink: 0;
-  width: 26px;
-  height: 26px;
-  border-radius: 50%;
+  min-width: 28px;
+  height: 28px;
+  padding: 0 5px;
+  border-radius: 999px;
   background: var(--pink-deep);
   color: white;
-  font-size: 0.78rem;
+  font-size: 0.76rem;
   font-weight: 700;
+  letter-spacing: -0.02em;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 .notable-card .result-badge {
-  width: 30px;
-  height: 30px;
+  min-width: 32px;
+  height: 32px;
   background: none;
 }
 .badge-star { position: absolute; inset: 0; width: 100%; height: 100%; color: var(--gold); }
-.badge-num { position: relative; z-index: 1; color: var(--ink); font-size: 0.72rem; font-weight: 800; }
+.badge-num { position: relative; z-index: 1; color: var(--ink); font-size: 0.72rem; font-weight: 800; letter-spacing: -0.02em; }
 .result-body { flex: 1; min-width: 0; }
 /* The restaurant name is the first thing your eye should catch — bumped
    ~14% over the old 0.95rem and set in the dark espresso ink rather than
@@ -550,6 +556,45 @@ body.app-shell {
   background: var(--cream);
   border: 1px solid rgba(240, 160, 32, 0.35);
 }
+
+/* "What to order" — specific dishes press mentions call out, most-mentioned
+   first. Pills (unlike "why it's here" below) since these are discrete,
+   scannable items rather than one editorial sentence — pink-outlined rather
+   than the endorsement badge's gold, so it doesn't read as another
+   accolade, just a menu shortlist. Label sits on its own line above the
+   pill row (rather than inline with the first pill) so a narrow card
+   doesn't wrap mid-way through the label and each pill doesn't force its
+   own full-width row — several short pills can now sit side by side. */
+.what-to-order {
+  margin-top: 0.5rem;
+}
+.wto-label {
+  display: block;
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+  margin-bottom: 0.3rem;
+}
+.dish-pill-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+.dish-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.24rem 0.7rem;
+  border-radius: 999px;
+  font-size: 0.76rem;
+  font-weight: 600;
+  color: var(--pink-dark);
+  background: white;
+  border: 1px solid var(--pink-soft);
+}
+.dish-count { color: var(--muted); font-weight: 700; }
 
 /* Plain text, not pills — "why it's here" is HungryPig's own editorial
    voice (a signature dish, the vibe), so it reads as a sentence rather than

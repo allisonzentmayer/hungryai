@@ -4,6 +4,30 @@
 let map;
 let markers = [];
 let markersById = new Map();
+// Assigns each restaurant a badge number the first time it's seen and keeps
+// it forever (for this page load), so the number on a pin/card stays put
+// across pans/zooms even though the results array gets re-sorted by
+// distance from the (moving) map center on every re-search. Without this,
+// the same restaurant could go from "#3" to "#7" just because the map
+// recentered, with nothing about the restaurant itself having changed.
+let badgeNumberByPlaceId = new Map();
+let nextBadgeNumber = 1;
+function badgeNumberFor(placeId) {
+  if (!badgeNumberByPlaceId.has(placeId)) {
+    badgeNumberByPlaceId.set(placeId, nextBadgeNumber++);
+  }
+  return badgeNumberByPlaceId.get(placeId);
+}
+// Called whenever the user starts looking at a genuinely different place
+// (zip search, map click, locate-me/page load) — as opposed to panning/
+// zooming/filtering around the same area, which should keep numbers stable.
+// Without this, numbering would just keep climbing forever within a
+// session, so a brand new search could start at "#44" with only a handful
+// of pins on screen, looking broken.
+function resetBadgeNumbers() {
+  badgeNumberByPlaceId = new Map();
+  nextBadgeNumber = 1;
+}
 let userLocation = null;
 let notableRestaurants = [];
 let lastResults = [];
@@ -197,6 +221,7 @@ function initMap() {
     searchInterruptedByUser = false;
     userLocation = { lat: e.latLng.lat(), lng: e.latLng.lng() };
     hideLocationButton();
+    resetBadgeNumbers();
     runSearch();
   });
 
@@ -379,6 +404,7 @@ function attemptZipSearch() {
         map.setZoom(14);
       });
       setStatus("");
+      resetBadgeNumbers();
       runSearch();
     })
     .catch(() => {
@@ -462,6 +488,7 @@ const MAX_SEARCH_RADIUS_METERS = 50000;
 // re-fetch at the winning radius afterward.
 async function runInitialSearch() {
   searchInterruptedByUser = false;
+  resetBadgeNumbers();
   await runInitialSearchAttempts();
 
   // fitMapToResults() just computed its own "fit everything in" zoom — but
@@ -690,10 +717,14 @@ function currentViewportRadiusMeters() {
 // planted on the exact same point instead of the icon visibly jumping.
 function pinMarkerIcon(labelText, { hovered = false } = {}) {
   const fill = hovered ? "#f291b3" : "#d1477a"; // lighter pink on hover
+  // White circle sized to comfortably fit 2-digit numbers (not just 1) —
+  // badge numbers persist and climb across a browsing session (see
+  // badgeNumberFor/resetBadgeNumbers), so double digits are common, not a
+  // rare edge case.
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="30" height="38" viewBox="0 0 30 38">
     <path d="M15 0C6.716 0 0 6.716 0 15c0 10.5 15 23 15 23s15-12.5 15-23C30 6.716 23.284 0 15 0z" fill="${fill}"/>
-    <circle cx="15" cy="15" r="6.5" fill="#fff"/>
-    <text x="15" y="15" text-anchor="middle" dominant-baseline="central" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="11" font-weight="700" fill="${fill}">${labelText}</text>
+    <circle cx="15" cy="15" r="8" fill="#fff"/>
+    <text x="15" y="15" text-anchor="middle" dominant-baseline="central" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="9.5" font-weight="700" letter-spacing="-0.3" fill="${fill}">${labelText}</text>
   </svg>`;
   const scale = hovered ? 1.35 : 1;
   return {
@@ -709,7 +740,7 @@ function notableMarkerIcon(labelText, { hovered = false } = {}) {
   const fill = hovered ? "#f6c15c" : "#f0a020"; // lighter gold on hover — stays in its own color family rather than shifting to pink
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40">
     <path d="${STAR_PATH}" fill="${fill}" stroke="#c97f0a" stroke-width="1.2" stroke-linejoin="round"/>
-    <text x="20" y="21" text-anchor="middle" dominant-baseline="central" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="11" font-weight="700" fill="#3a2233">${labelText}</text>
+    <text x="20" y="21" text-anchor="middle" dominant-baseline="central" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="9.5" font-weight="700" letter-spacing="-0.3" fill="#3a2233">${labelText}</text>
   </svg>`;
   const scale = hovered ? 1.3 : 1;
   return {
@@ -764,12 +795,14 @@ function renderResults(results, { fit = true } = {}) {
   const list = document.getElementById("resultsList");
   list.innerHTML = "";
 
-  results.forEach((place, i) => {
+  results.forEach((place) => {
+    const num = badgeNumberFor(place.id);
+
     // Marker
     const marker = new google.maps.Marker({
       position: { lat: place.lat, lng: place.lng },
       map,
-      icon: place.isNotable ? notableMarkerIcon(String(i + 1)) : pinMarkerIcon(String(i + 1)),
+      icon: place.isNotable ? notableMarkerIcon(String(num)) : pinMarkerIcon(String(num)),
       title: place.name,
       zIndex: place.isNotable ? 999 : 1,
     });
@@ -833,9 +866,29 @@ function renderResults(results, { fit = true } = {}) {
     const traitSource = place.pressTags && place.pressTags.length > 0 ? place.pressTags : place.tags || [];
     const whyHere = traitSource.map((t) => escapeHtml(t)).join(" · ");
 
+    // "What to order" — specific dishes press mentions call out, ranked by
+    // how many separate sources name the same dish (dishes.mention_count
+    // from hungrydb). Only shown once a dish has actually been extracted;
+    // most restaurants without press coverage simply won't have any.
+    const topDishes = place.topDishes || [];
+    const whatToOrder =
+      topDishes.length > 0
+        ? `<div class="what-to-order">
+             <span class="wto-label">What to order</span>
+             <div class="dish-pill-row">${topDishes
+               .map(
+                 (d) =>
+                   `<span class="dish-pill">${escapeHtml(d.name)}${
+                     d.count > 1 ? ` <span class="dish-count">×${d.count}</span>` : ""
+                   }</span>`
+               )
+               .join("")}</div>
+           </div>`
+        : "";
+
     const badgeContent = place.isNotable
-      ? `<svg class="badge-star" viewBox="0 0 40 40" aria-hidden="true"><path d="${STAR_PATH}" fill="currentColor"/></svg><span class="badge-num">${i + 1}</span>`
-      : `${i + 1}`;
+      ? `<svg class="badge-star" viewBox="0 0 40 40" aria-hidden="true"><path d="${STAR_PATH}" fill="currentColor"/></svg><span class="badge-num">${num}</span>`
+      : `${num}`;
 
     li.innerHTML = `
       <span class="result-badge">${badgeContent}</span>
@@ -844,6 +897,7 @@ function renderResults(results, { fit = true } = {}) {
         <div class="result-meta">${metaParts.join(" · ")}</div>
         ${ratingParts.length > 0 ? `<div class="result-rating">${ratingParts.join(" · ")}</div>` : ""}
         ${endorsements.length > 0 ? `<div class="endorsement-badges">${endorsements.join("")}</div>` : ""}
+        ${whatToOrder}
         ${whyHere ? `<div class="why-here">${whyHere}</div>` : ""}
       </div>
       ${place.mapsUrl ? `<button type="button" class="open-external-btn" title="Open in Google Maps" aria-label="Open in Google Maps">
