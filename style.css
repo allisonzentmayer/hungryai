@@ -488,8 +488,7 @@ body.app-shell {
 }
 /* min-width + pill radius (not a fixed circle) so 2-digit numbers get room
    to breathe instead of being squeezed into a circle sized for one digit —
-   badge numbers persist across pans/zooms and climb over a session (see
-   badgeNumberFor in app.js), so double digits are the common case. */
+   a list of 10+ results is common. */
 .result-badge {
   position: relative;
   flex-shrink: 0;

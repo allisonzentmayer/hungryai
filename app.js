@@ -4,30 +4,6 @@
 let map;
 let markers = [];
 let markersById = new Map();
-// Assigns each restaurant a badge number the first time it's seen and keeps
-// it forever (for this page load), so the number on a pin/card stays put
-// across pans/zooms even though the results array gets re-sorted by
-// distance from the (moving) map center on every re-search. Without this,
-// the same restaurant could go from "#3" to "#7" just because the map
-// recentered, with nothing about the restaurant itself having changed.
-let badgeNumberByPlaceId = new Map();
-let nextBadgeNumber = 1;
-function badgeNumberFor(placeId) {
-  if (!badgeNumberByPlaceId.has(placeId)) {
-    badgeNumberByPlaceId.set(placeId, nextBadgeNumber++);
-  }
-  return badgeNumberByPlaceId.get(placeId);
-}
-// Called whenever the user starts looking at a genuinely different place
-// (zip search, map click, locate-me/page load) — as opposed to panning/
-// zooming/filtering around the same area, which should keep numbers stable.
-// Without this, numbering would just keep climbing forever within a
-// session, so a brand new search could start at "#44" with only a handful
-// of pins on screen, looking broken.
-function resetBadgeNumbers() {
-  badgeNumberByPlaceId = new Map();
-  nextBadgeNumber = 1;
-}
 let userLocation = null;
 let notableRestaurants = [];
 let lastResults = [];
@@ -221,7 +197,6 @@ function initMap() {
     searchInterruptedByUser = false;
     userLocation = { lat: e.latLng.lat(), lng: e.latLng.lng() };
     hideLocationButton();
-    resetBadgeNumbers();
     runSearch();
   });
 
@@ -404,7 +379,6 @@ function attemptZipSearch() {
         map.setZoom(14);
       });
       setStatus("");
-      resetBadgeNumbers();
       runSearch();
     })
     .catch(() => {
@@ -488,7 +462,6 @@ const MAX_SEARCH_RADIUS_METERS = 50000;
 // re-fetch at the winning radius afterward.
 async function runInitialSearch() {
   searchInterruptedByUser = false;
-  resetBadgeNumbers();
   await runInitialSearchAttempts();
 
   // fitMapToResults() just computed its own "fit everything in" zoom — but
@@ -719,10 +692,8 @@ function pinMarkerIcon(labelText, { hovered = false } = {}) {
   const fill = hovered ? "#f291b3" : "#d1477a"; // lighter pink on hover
   // Little pig ears peeking above the head (on-brand for HungryPig) plus a
   // glossy highlight, instead of a plain flat teardrop — same numbering,
-  // friendlier package. White circle stays sized to comfortably fit
-  // 2-digit numbers (not just 1) — badge numbers persist and climb across a
-  // browsing session (see badgeNumberFor/resetBadgeNumbers), so double
-  // digits are common, not a rare edge case.
+  // friendlier package. White circle sized to comfortably fit 2-digit
+  // numbers, since a list of 10+ results is common.
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="30" height="38" viewBox="0 0 30 38">
     <circle cx="5.5" cy="5" r="4.3" fill="${fill}"/>
     <circle cx="24.5" cy="5" r="4.3" fill="${fill}"/>
@@ -767,18 +738,20 @@ function awardBadgeText(award) {
 // Toggles a marker's "here's this one" look — grown + lightened icon and a
 // higher z-index so it doesn't get lost behind neighbors. Needs the
 // result's index (for its label number) and isNotable (pin vs star), found
-// by matching id against the currently-rendered results.
+// by matching id against the currently-rendered results. Numbers always
+// match the list's current top-to-bottom order (distance/relevance), not a
+// stable per-restaurant identity — deliberate choice: a restaurant's number
+// can shift when you pan/zoom and it re-ranks, in exchange for the list
+// never showing badges out of order (e.g. 8, 10, 6) the way a persistent
+// numbering scheme would once results re-sort by distance from the (moved)
+// map center.
 function setMarkerEmphasized(id, emphasized) {
   const marker = markersById.get(id);
   if (!marker) return;
-  const place = lastResults.find((r) => r.id === id);
-  if (!place) return;
-  // Must match the number renderResults() assigned via badgeNumberFor —
-  // this used to independently recompute a label from lastResults' array
-  // position instead, which drifted out of sync with the card's number the
-  // moment a pin got hovered/clicked (the pin would silently start showing
-  // its list position instead of its stable badge number).
-  const labelText = String(badgeNumberFor(place.id));
+  const idx = lastResults.findIndex((r) => r.id === id);
+  if (idx === -1) return;
+  const place = lastResults[idx];
+  const labelText = String(idx + 1);
   const iconFn = place.isNotable ? notableMarkerIcon : pinMarkerIcon;
   marker.setIcon(iconFn(labelText, { hovered: emphasized }));
   marker.setZIndex(emphasized ? 9999 : place.isNotable ? 999 : 1);
@@ -807,8 +780,8 @@ function renderResults(results, { fit = true } = {}) {
   const list = document.getElementById("resultsList");
   list.innerHTML = "";
 
-  results.forEach((place) => {
-    const num = badgeNumberFor(place.id);
+  results.forEach((place, i) => {
+    const num = i + 1;
 
     // Marker
     const marker = new google.maps.Marker({
