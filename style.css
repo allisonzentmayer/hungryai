@@ -6,10 +6,15 @@
   --pink-pale: #fbd7e1;
   --paper: #fdf1f2;
   --line: #f6dce3;
+  /* The dark espresso/burgundy anchor — used for restaurant names and other
+     primary content so pink can stay reserved for actions/accents instead
+     of carrying the whole page. Was already here as general body-text ink;
+     now leaned on much more deliberately. */
   --ink: #3a2233;
   --muted: #9c7686;
   --gold: #f0a020;
   --gold-ink: #8a5a00;
+  --cream: #fdf3df;
   --green: #2fa968;
   --red: #c0392b;
 }
@@ -70,7 +75,6 @@ body.app-shell {
   border-radius: 50%;
   border: 2px solid var(--pink-deep);
 }
-.brand-text { display: flex; align-items: baseline; gap: 0.6rem; flex-wrap: wrap; }
 .topbar h1 {
   margin: 0;
   font-family: "Lobster", cursive;
@@ -94,18 +98,26 @@ body.app-shell {
 }
 .tagline .sparkle { width: 11px; height: 11px; color: var(--gold); }
 
-/* Pink/white checkerboard, diner-tablecloth style — sits right under the
-   header, the same "bracket the header in pink" idea as its top border. */
+/* Pink/white checkerboard, diner-tablecloth style — HungryPig's one
+   deliberate brand texture. Used sparingly (the main header, and once more
+   by the sidebar mascot nook) rather than as a generic page-wide divider,
+   so it reads as a signature rather than wallpaper. Squares sized to match
+   the strip height so each one is a clearly visible check, not a dithered
+   pattern. */
 .diner-stripe {
-  height: 14px;
+  height: 9px;
   flex-shrink: 0;
   background-color: white;
   background-image:
     linear-gradient(45deg, var(--pink-deep) 25%, transparent 25%, transparent 75%, var(--pink-deep) 75%, var(--pink-deep)),
     linear-gradient(45deg, var(--pink-deep) 25%, transparent 25%, transparent 75%, var(--pink-deep) 75%, var(--pink-deep));
-  background-size: 16px 16px;
-  background-position: 0 0, 8px 8px;
+  background-size: 9px 9px;
+  background-position: 0 0, 4.5px 4.5px;
 }
+/* The sidebar placement sits inside the padded controls column rather than
+   running edge-to-edge — rounded so it reads as a deliberate little
+   ornament there, not a misaligned divider. */
+.diner-stripe-inset { border-radius: 999px; margin: 0.25rem 0 0.4rem; }
 
 .main-nav {
   display: flex;
@@ -182,12 +194,16 @@ body.app-shell {
   min-height: 0;
 }
 .control-row { display: flex; flex-direction: column; gap: 0.4rem; }
+/* Quieter than before on purpose — these are settings, not actions. Pink
+   is reserved for things you actually tap (the CTA, Choose for me), so
+   filters/labels sit in muted ink instead of competing for the same
+   attention. */
 .control-row label {
   font-size: 0.7rem;
-  font-weight: 800;
+  font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  color: var(--pink-deep);
+  color: var(--muted);
 }
 .select-wrap, .zip-input-wrap { position: relative; }
 .select-wrap svg, .zip-input-wrap svg {
@@ -197,15 +213,15 @@ body.app-shell {
   transform: translateY(-50%);
   width: 16px;
   height: 16px;
-  color: var(--pink-deep);
+  color: var(--muted);
   pointer-events: none;
 }
 .control-row select,
 .zip-input-wrap input {
   width: 100%;
-  padding: 0.65rem 0.9rem 0.65rem 2.4rem;
-  border: 1.5px solid var(--pink-pale);
-  border-radius: 999px;
+  padding: 0.6rem 0.9rem 0.6rem 2.4rem;
+  border: 1px solid var(--line);
+  border-radius: 10px;
   font-size: 0.9rem;
   background: white;
   color: var(--ink);
@@ -262,6 +278,28 @@ body.app-shell {
   transition: background 0.15s;
 }
 .secondary-btn:hover { background: var(--pink-pale); }
+/* "Choose for me" is the fun, differentiating action in this sidebar — worth
+   the strongest pill treatment, filled rather than just outlined, so it
+   doesn't read as equal weight to a plain settings control. */
+#chooseForMeBtn { background: var(--pink-pale); border-color: var(--pink-pale); color: var(--pink-dark); }
+#chooseForMeBtn:hover { background: var(--pink-soft); }
+
+/* "Update my location" / "Enable location access" is a fallback, not a
+   primary action — a plain underlined text link instead of a second pill
+   next to Choose for me keeps it from competing for the same attention. */
+.text-action-btn {
+  align-self: flex-start;
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--pink-deep);
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+.text-action-btn:hover { color: var(--pink-dark); }
 
 .zip-input-wrap { flex: 1; }
 .zip-input-group { display: flex; gap: 0.5rem; align-items: center; }
@@ -274,7 +312,6 @@ body.app-shell {
 .zip-input-group .secondary-btn:hover { background: var(--pink-dark); }
 
 #searchBtn { display: none; } /* superseded by the header CTA button */
-#enableLocationBtn { align-self: flex-start; }
 
 .status { font-size: 0.83rem; color: var(--muted); min-height: 1.2em; }
 
@@ -367,6 +404,12 @@ body.app-shell {
   height: 100%;
   background: #f3e4e8;
 }
+/* Google injects a focusable div for keyboard panning that picks up the
+   browser's default blue focus ring on click/drag — jumps out hard against
+   this palette. Swap it for a subtle neutral inset line instead of just
+   removing it outright, so keyboard users still get a focus indicator. */
+.map:focus-within { outline: none; box-shadow: inset 0 0 0 1px var(--line); }
+.map * { outline: none; }
 
 .map-toggle {
   display: flex;
@@ -443,91 +486,124 @@ body.app-shell {
 .notable-card:hover, .notable-card.highlighted {
   background: linear-gradient(to right, rgba(240, 160, 32, 0.14), var(--pink-pale) 70%);
 }
+/* min-width + pill radius (not a fixed circle) so 2-digit numbers get room
+   to breathe instead of being squeezed into a circle sized for one digit —
+   badge numbers persist across pans/zooms and climb over a session (see
+   badgeNumberFor in app.js), so double digits are the common case. */
 .result-badge {
   position: relative;
   flex-shrink: 0;
-  width: 26px;
-  height: 26px;
-  border-radius: 50%;
+  min-width: 28px;
+  height: 28px;
+  padding: 0 5px;
+  border-radius: 999px;
   background: var(--pink-deep);
   color: white;
-  font-size: 0.78rem;
+  font-size: 0.76rem;
   font-weight: 700;
+  letter-spacing: -0.02em;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 .notable-card .result-badge {
-  width: 30px;
-  height: 30px;
+  min-width: 32px;
+  height: 32px;
   background: none;
 }
 .badge-star { position: absolute; inset: 0; width: 100%; height: 100%; color: var(--gold); }
-.badge-num { position: relative; z-index: 1; color: var(--ink); font-size: 0.72rem; font-weight: 800; }
+.badge-num { position: relative; z-index: 1; color: var(--ink); font-size: 0.72rem; font-weight: 800; letter-spacing: -0.02em; }
 .result-body { flex: 1; min-width: 0; }
-.result-card h3 { margin: 0 0 0.25rem; font-size: 0.95rem; color: var(--ink); }
+/* The restaurant name is the first thing your eye should catch — bumped
+   ~14% over the old 0.95rem and set in the dark espresso ink rather than
+   pink, so it reads as the headline instead of just another pink element. */
+.result-card h3 { margin: 0 0 0.3rem; font-size: 1.08rem; font-weight: 700; color: var(--ink); }
+/* Distance/price/cuisine — plain supporting facts, kept quiet. */
 .result-meta {
+  font-size: 0.78rem;
+  color: var(--muted);
+  line-height: 1.4;
+}
+/* Rating line is deliberately separated from the meta line and explicitly
+   labeled "Google reviews" — this is sourced, external metadata, not
+   HungryPig's own take, and shouldn't blur together with the curation
+   signal below it. */
+.result-rating {
   font-size: 0.82rem;
   color: var(--muted);
-  display: flex;
+  line-height: 1.4;
+}
+.result-rating .rating { color: var(--gold-ink); font-weight: 700; }
+.result-rating .open-status { color: var(--green); font-weight: 600; }
+.result-rating .closed-status { color: var(--red); font-weight: 600; }
+
+/* One shared "endorsement" stamp for anything HungryPig or a third party is
+   actually vouching for — a Michelin star, a James Beard nod, or a press
+   pick — instead of a different pill style per source. Gold/cream rather
+   than pink specifically so it doesn't compete with the pink used for
+   actions elsewhere, and reads as its own distinct "seal of approval." */
+.endorsement-badges { display: flex; flex-wrap: wrap; gap: 0.35rem; margin-top: 0.5rem; }
+.endorsement-badge {
+  display: inline-flex;
   align-items: center;
-  gap: 0.4rem;
-  flex-wrap: wrap;
-}
-.result-meta .rating { color: var(--gold-ink); font-weight: 700; }
-.result-sub {
-  font-size: 0.8rem;
-  color: var(--muted);
-  margin-top: 0.15rem;
-}
-.result-sub .open-status { color: var(--green); font-weight: 600; }
-.result-sub .closed-status { color: var(--red); font-weight: 600; }
-
-.award-badges { display: flex; flex-wrap: wrap; gap: 0.35rem; margin-top: 0.45rem; }
-.award-badge {
-  padding: 0.15rem 0.6rem;
+  gap: 0.3rem;
+  padding: 0.2rem 0.65rem;
   border-radius: 999px;
-  font-size: 0.68rem;
-  font-weight: 700;
-  letter-spacing: 0.01em;
-  color: var(--pink-deep);
-  background: var(--pink-pale);
-}
-
-/* Press mentions from the hungrydb ingestion pipeline (Supabase) — bordered
-   and gold-tinted rather than filled, so it reads as "written up elsewhere"
-   and doesn't compete visually with the solid Michelin/James Beard badges. */
-.press-badge {
-  padding: 0.15rem 0.6rem;
-  border-radius: 999px;
-  font-size: 0.68rem;
+  font-size: 0.7rem;
   font-weight: 700;
   letter-spacing: 0.01em;
   color: var(--gold-ink);
-  background: rgba(240, 160, 32, 0.14);
+  background: var(--cream);
   border: 1px solid rgba(240, 160, 32, 0.35);
 }
 
-/* "Known for" tags — deliberately quieter than award-badge (outlined, not
-   filled) so the Michelin/James Beard badges stay the visually dominant
-   signal and these read as supporting context, not another award. */
-.trait-badges { display: flex; flex-wrap: wrap; gap: 0.3rem; margin-top: 0.35rem; }
-.trait-badge {
-  padding: 0.1rem 0.55rem;
-  border-radius: 999px;
-  font-size: 0.66rem;
-  font-weight: 600;
+/* "What to order" — specific dishes press mentions call out, most-mentioned
+   first. Pills (unlike "why it's here" below) since these are discrete,
+   scannable items rather than one editorial sentence — pink-outlined rather
+   than the endorsement badge's gold, so it doesn't read as another
+   accolade, just a menu shortlist. Label sits on its own line above the
+   pill row (rather than inline with the first pill) so a narrow card
+   doesn't wrap mid-way through the label and each pill doesn't force its
+   own full-width row — several short pills can now sit side by side. */
+.what-to-order {
+  margin-top: 0.5rem;
+}
+.wto-label {
+  display: block;
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
   color: var(--muted);
+  margin-bottom: 0.3rem;
+}
+.dish-pill-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+.dish-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.24rem 0.7rem;
+  border-radius: 999px;
+  font-size: 0.76rem;
+  font-weight: 600;
+  color: var(--pink-dark);
   background: white;
-  border: 1px solid var(--line);
-  /* Some tags come from LLM extraction (press mentions), not just the
-     hand-curated Michelin/JBF list — truncate defensively so a longer-than-
-     expected one clips with an ellipsis instead of wrapping and stretching
-     the card. */
-  max-width: 11rem;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  border: 1px solid var(--pink-soft);
+}
+.dish-count { color: var(--muted); font-weight: 700; }
+
+/* Plain text, not pills — "why it's here" is HungryPig's own editorial
+   voice (a signature dish, the vibe), so it reads as a sentence rather than
+   metadata chips competing with the endorsement badge above it. */
+.why-here {
+  margin-top: 0.4rem;
+  font-size: 0.78rem;
+  color: var(--muted);
+  line-height: 1.4;
 }
 .open-external-btn {
   flex-shrink: 0;
@@ -601,10 +677,13 @@ body.app-shell {
 .policy h2 { font-size: 1.1rem; margin-top: 1.5rem; color: var(--pink-deep); }
 .policy a { color: var(--pink-deep); }
 
-.about-hero { max-width: 640px; margin: 0 auto; padding: 2.5rem 2rem; text-align: center; }
+.about-hero { max-width: 860px; margin: 0 auto; padding: 2.5rem 2rem; text-align: center; }
 .about-hero .mascot-pig { width: 140px; margin-bottom: 1rem; }
 .about-hero p { line-height: 1.6; color: var(--ink); }
 .about-hero p a { color: var(--pink-deep); }
+/* The header used to carry this sentiment on every page — moved here,
+   its one true home, instead of competing with the header's logo/nav/CTA. */
+.about-hero p.about-tagline { justify-content: center; margin: 0.25rem 0 1.25rem; color: var(--pink-deep); }
 .about-contact {
   margin-top: 1.5rem;
   padding-top: 1.5rem;

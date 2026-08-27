@@ -4,6 +4,30 @@
 let map;
 let markers = [];
 let markersById = new Map();
+// Assigns each restaurant a badge number the first time it's seen and keeps
+// it forever (for this page load), so the number on a pin/card stays put
+// across pans/zooms even though the results array gets re-sorted by
+// distance from the (moving) map center on every re-search. Without this,
+// the same restaurant could go from "#3" to "#7" just because the map
+// recentered, with nothing about the restaurant itself having changed.
+let badgeNumberByPlaceId = new Map();
+let nextBadgeNumber = 1;
+function badgeNumberFor(placeId) {
+  if (!badgeNumberByPlaceId.has(placeId)) {
+    badgeNumberByPlaceId.set(placeId, nextBadgeNumber++);
+  }
+  return badgeNumberByPlaceId.get(placeId);
+}
+// Called whenever the user starts looking at a genuinely different place
+// (zip search, map click, locate-me/page load) — as opposed to panning/
+// zooming/filtering around the same area, which should keep numbers stable.
+// Without this, numbering would just keep climbing forever within a
+// session, so a brand new search could start at "#44" with only a handful
+// of pins on screen, looking broken.
+function resetBadgeNumbers() {
+  badgeNumberByPlaceId = new Map();
+  nextBadgeNumber = 1;
+}
 let userLocation = null;
 let notableRestaurants = [];
 let lastResults = [];
@@ -17,6 +41,40 @@ let autoSearchTimer = null;
 // actually panning/zooming by hand — only the latter should surface
 // "Search this area".
 let suppressSearchAreaPrompt = false;
+// Flipped true the moment real user interaction (drag/zoom, not one of our
+// own programmatic moves) is detected after a search cycle starts. Checked
+// by fitMapToResults() right before it would otherwise snap the camera to
+// that search's results — without this, a slow-to-resolve search (e.g. the
+// widen-radius fallback on page load) could finish after the user has
+// already scrolled/zoomed elsewhere and yank the view back to stale
+// results, undoing what they just did. Reset at the start of each fresh
+// "new location, start searching" entry point (initial locate, map click,
+// zip search) — not inside runSearch() itself, since a single search cycle
+// (e.g. the widen-radius fallback) can call runSearch() more than once and
+// an interruption partway through needs to survive across all of them.
+let searchInterruptedByUser = false;
+
+// Wraps a programmatic camera move (fitBounds, panTo, setZoom/setCenter) so
+// it doesn't get mistaken for the user dragging/zooming by hand.
+// suppressSearchAreaPrompt normally clears itself on the next "idle" event
+// once the move settles — but in testing, that "idle" occasionally didn't
+// fire promptly after some fitBounds + zoom-cap combinations, which left
+// the flag stuck true and silently broke auto-search-on-scroll and zoom
+// persistence until some unrelated later map event happened to trigger it.
+// The timeout is a backstop for that: whichever fires first, idle or the
+// timeout, clears it — safe either way since clearing twice is a no-op.
+function withSuppressedInteraction(moveFn) {
+  suppressSearchAreaPrompt = true;
+  moveFn();
+  let cleared = false;
+  const clear = () => {
+    if (cleared) return;
+    cleared = true;
+    suppressSearchAreaPrompt = false;
+  };
+  google.maps.event.addListenerOnce(map, "idle", clear);
+  setTimeout(clear, 1500);
+}
 
 // Curated Michelin/James Beard restaurants (data/notable-restaurants.json).
 // Ones that also turn up in the live Places search always show (matched by
@@ -63,6 +121,29 @@ function cacheLocation(loc) {
   }
 }
 
+// Remembers radius/openNow/zoom across a refresh — without this, "Open now"
+// resets to checked and the map resets to a computed fit-to-results zoom
+// every single load, ignoring whatever the user actually had it set to.
+const SETTINGS_KEY = "hungrypig:settings";
+
+function loadSettings() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(SETTINGS_KEY));
+    if (parsed && typeof parsed === "object") return parsed;
+  } catch (_err) {
+    // Ignore — corrupt/blocked storage just means defaults apply.
+  }
+  return {};
+}
+
+function saveSettings(patch) {
+  try {
+    localStorage.setItem(SETTINGS_KEY, JSON.stringify({ ...loadSettings(), ...patch }));
+  } catch (_err) {
+    // Ignore — private browsing / storage blocked, just skip saving.
+  }
+}
+
 // Pig mascot click behavior (the "Oink!" bubble) lives in mascot-oink.js,
 // loaded alongside this file — shared with about.html, which doesn't load
 // the rest of this map/search-specific script.
@@ -73,14 +154,21 @@ function initMap() {
   // — avoids a jarring flash-to-Manhattan on every load while geolocation
   // is still resolving (or if it fails).
   const cachedLocation = loadCachedLocation();
+  const savedSettings = loadSettings();
   map = new google.maps.Map(document.getElementById("map"), {
     center: cachedLocation || { lat: 40.7128, lng: -74.006 }, // fallback: NYC, replaced once we get real location
-    zoom: 15,
+    zoom: savedSettings.zoom ?? 15,
     mapTypeControl: false,
     zoomControl: false,
     streetViewControl: false,
     fullscreenControl: false,
   });
+
+  // Applied before the first search fires below, so that search (and its
+  // fit-to-results zoom) already reflects what the user had last time
+  // instead of resetting to "Open now" checked / the default radius.
+  if (savedSettings.radius) document.getElementById("radius").value = String(savedSettings.radius);
+  if (typeof savedSettings.openNow === "boolean") document.getElementById("openNow").checked = savedSettings.openNow;
 
   addMapControls();
 
@@ -116,7 +204,13 @@ function initMap() {
   // search trigger.
   ["radius", "openNow"].forEach((id) => {
     document.getElementById(id).addEventListener("change", () => {
-      if (userLocation) runSearch();
+      saveSettings({
+        radius: Number(document.getElementById("radius").value),
+        openNow: document.getElementById("openNow").checked,
+      });
+      if (!userLocation) return;
+      searchInterruptedByUser = false;
+      runSearch();
     });
   });
 
@@ -124,9 +218,26 @@ function initMap() {
   initLocationOnLoad();
 
   map.addListener("click", (e) => {
+    searchInterruptedByUser = false;
     userLocation = { lat: e.latLng.lat(), lng: e.latLng.lng() };
     hideLocationButton();
+    resetBadgeNumbers();
     runSearch();
+  });
+
+  // Catches real user interaction as early as possible (the moment a drag
+  // or zoom begins, not once it settles) so a slow in-flight search knows
+  // to back off before it finishes — see searchInterruptedByUser above.
+  map.addListener("dragstart", () => {
+    if (!suppressSearchAreaPrompt) searchInterruptedByUser = true;
+  });
+  map.addListener("zoom_changed", () => {
+    if (suppressSearchAreaPrompt) return;
+    searchInterruptedByUser = true;
+    // Saved immediately here rather than waiting for "idle" — a user could
+    // refresh within a second of zooming, sooner than idle (or its timeout
+    // backstop) would otherwise get around to it.
+    saveSettings({ zoom: map.getZoom() });
   });
 
   // Auto re-search once the map settles somewhere that no longer matches
@@ -201,7 +312,10 @@ function clearFilters() {
   document.getElementById("radius").value = "1609";
   document.getElementById("openNow").checked = true;
   document.getElementById("zipInput").value = "";
-  if (userLocation) runSearch();
+  saveSettings({ radius: 1609, openNow: true });
+  if (!userLocation) return;
+  searchInterruptedByUser = false;
+  runSearch();
 }
 
 // Picks a random place from whatever's currently on screen and opens it in
@@ -283,11 +397,14 @@ function attemptZipSearch() {
   setStatus("Looking up that zip code…");
   geocodeZip(zip)
     .then((loc) => {
+      searchInterruptedByUser = false;
       userLocation = loc;
-      suppressSearchAreaPrompt = true;
-      map.setCenter(loc);
-      map.setZoom(14);
+      withSuppressedInteraction(() => {
+        map.setCenter(loc);
+        map.setZoom(14);
+      });
       setStatus("");
+      resetBadgeNumbers();
       runSearch();
     })
     .catch(() => {
@@ -370,6 +487,23 @@ const MAX_SEARCH_RADIUS_METERS = 50000;
 // tier wins is rendered straight from its own response — no redundant
 // re-fetch at the winning radius afterward.
 async function runInitialSearch() {
+  searchInterruptedByUser = false;
+  resetBadgeNumbers();
+  await runInitialSearchAttempts();
+
+  // fitMapToResults() just computed its own "fit everything in" zoom — but
+  // if the user has a remembered zoom preference, that should win over the
+  // computed one, same as it does for radius/openNow. Skipped if they've
+  // already taken over the map themselves in the meantime (in which case
+  // wherever they've navigated to takes priority, not a remembered zoom
+  // from before).
+  const savedZoom = loadSettings().zoom;
+  if (savedZoom != null && !searchInterruptedByUser) {
+    withSuppressedInteraction(() => map.setZoom(savedZoom));
+  }
+}
+
+async function runInitialSearchAttempts() {
   await runSearch();
   if (lastResults.length > 0) return;
 
@@ -583,10 +717,14 @@ function currentViewportRadiusMeters() {
 // planted on the exact same point instead of the icon visibly jumping.
 function pinMarkerIcon(labelText, { hovered = false } = {}) {
   const fill = hovered ? "#f291b3" : "#d1477a"; // lighter pink on hover
+  // White circle sized to comfortably fit 2-digit numbers (not just 1) —
+  // badge numbers persist and climb across a browsing session (see
+  // badgeNumberFor/resetBadgeNumbers), so double digits are common, not a
+  // rare edge case.
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="30" height="38" viewBox="0 0 30 38">
     <path d="M15 0C6.716 0 0 6.716 0 15c0 10.5 15 23 15 23s15-12.5 15-23C30 6.716 23.284 0 15 0z" fill="${fill}"/>
-    <circle cx="15" cy="15" r="6.5" fill="#fff"/>
-    <text x="15" y="15" text-anchor="middle" dominant-baseline="central" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="11" font-weight="700" fill="${fill}">${labelText}</text>
+    <circle cx="15" cy="15" r="8" fill="#fff"/>
+    <text x="15" y="15" text-anchor="middle" dominant-baseline="central" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="9.5" font-weight="700" letter-spacing="-0.3" fill="${fill}">${labelText}</text>
   </svg>`;
   const scale = hovered ? 1.35 : 1;
   return {
@@ -602,7 +740,7 @@ function notableMarkerIcon(labelText, { hovered = false } = {}) {
   const fill = hovered ? "#f6c15c" : "#f0a020"; // lighter gold on hover — stays in its own color family rather than shifting to pink
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40">
     <path d="${STAR_PATH}" fill="${fill}" stroke="#c97f0a" stroke-width="1.2" stroke-linejoin="round"/>
-    <text x="20" y="21" text-anchor="middle" dominant-baseline="central" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="11" font-weight="700" fill="#3a2233">${labelText}</text>
+    <text x="20" y="21" text-anchor="middle" dominant-baseline="central" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="9.5" font-weight="700" letter-spacing="-0.3" fill="#3a2233">${labelText}</text>
   </svg>`;
   const scale = hovered ? 1.3 : 1;
   return {
@@ -618,11 +756,37 @@ function awardBadgeText(award) {
     : `JAMES BEARD · ${award.category} (${award.year})`;
 }
 
+// Toggles a marker's "here's this one" look — grown + lightened icon and a
+// higher z-index so it doesn't get lost behind neighbors. Needs the
+// result's index (for its label number) and isNotable (pin vs star), found
+// by matching id against the currently-rendered results.
+function setMarkerEmphasized(id, emphasized) {
+  const marker = markersById.get(id);
+  if (!marker) return;
+  const idx = lastResults.findIndex((r) => r.id === id);
+  if (idx === -1) return;
+  const place = lastResults[idx];
+  const labelText = String(idx + 1);
+  const iconFn = place.isNotable ? notableMarkerIcon : pinMarkerIcon;
+  marker.setIcon(iconFn(labelText, { hovered: emphasized }));
+  marker.setZIndex(emphasized ? 9999 : place.isNotable ? 999 : 1);
+}
+
+// Grows + lightens a marker and gives it a quick bounce — the shared
+// "here's this one" cue for clicking a result, whether that's its card, its
+// map pin, or "Choose for me". Hovering a card uses the same emphasis (via
+// setMarkerEmphasized) but toggles off directly on mouseleave instead of
+// waiting for this timeout, since hover has a natural "off" signal a click
+// doesn't.
 function highlightMarker(id) {
+  setMarkerEmphasized(id, true);
   const marker = markersById.get(id);
   if (!marker) return;
   marker.setAnimation(google.maps.Animation.BOUNCE);
-  setTimeout(() => marker.setAnimation(null), 700);
+  setTimeout(() => {
+    marker.setAnimation(null);
+    setMarkerEmphasized(id, false);
+  }, 700);
 }
 
 function renderResults(results, { fit = true } = {}) {
@@ -631,16 +795,21 @@ function renderResults(results, { fit = true } = {}) {
   const list = document.getElementById("resultsList");
   list.innerHTML = "";
 
-  results.forEach((place, i) => {
+  results.forEach((place) => {
+    const num = badgeNumberFor(place.id);
+
     // Marker
     const marker = new google.maps.Marker({
       position: { lat: place.lat, lng: place.lng },
       map,
-      icon: place.isNotable ? notableMarkerIcon(String(i + 1)) : pinMarkerIcon(String(i + 1)),
+      icon: place.isNotable ? notableMarkerIcon(String(num)) : pinMarkerIcon(String(num)),
       title: place.name,
       zIndex: place.isNotable ? 999 : 1,
     });
-    marker.addListener("click", () => scrollToCard(place.id));
+    marker.addListener("click", () => {
+      scrollToCard(place.id);
+      highlightMarker(place.id);
+    });
     markers.push(marker);
     markersById.set(place.id, marker);
 
@@ -656,43 +825,80 @@ function renderResults(results, { fit = true } = {}) {
         : place.openNow === false
         ? '<span class="closed-status">Closed</span>'
         : "";
-    const badges = (place.awards || [])
-      .map((a) => `<span class="award-badge">${escapeHtml(awardBadgeText(a))}</span>`)
-      .join("");
+
+    // Plain facts — distance, price, cuisine. Quiet supporting metadata,
+    // not the point of the card.
+    const metaParts = [`${place.distance.toFixed(1)} mi`];
+    if (priceStr) metaParts.push(priceStr);
+    if (place.cuisine) metaParts.push(escapeHtml(place.cuisine));
+
+    // Rating only, no review count — kept visually separate from
+    // HungryPig's own curation (the endorsement badge + "why it's here"
+    // line below) so the two don't blur into one undifferentiated wall of
+    // pills.
+    const ratingParts = [];
+    if (place.rating != null) ratingParts.push(`<span class="rating">★ ${place.rating.toFixed(1)}</span>`);
+    if (openStr) ratingParts.push(openStr);
+
+    // One shared badge style for anything actually being vouched for — a
+    // Michelin star, a James Beard nod, or a press pick — instead of a
+    // different pill per source (that stacking to 6 pills was the bug).
+    const endorsements = (place.awards || []).map(
+      (a) => `<span class="endorsement-badge">${escapeHtml(awardBadgeText(a))}</span>`
+    );
+    // PIG PICK is reserved for actual cross-source consensus — showing up
+    // in more than one independent write-up, not just one (mirrors the
+    // same "repetition = consensus" logic the backend already uses for
+    // score boosting). A single mention doesn't get a badge at all rather
+    // than a softer fallback — it still feeds the score boost and the "why
+    // it's here" line, just not this stamp. Never names the source itself
+    // — the methodology is part of the brand, not a citation trail.
+    const pressMentions = place.pressMentions || [];
+    const pressSources = new Set(pressMentions.map((m) => m.source_name || "the press"));
+    if (pressSources.size >= 2) {
+      endorsements.push(`<span class="endorsement-badge">🐽 PIG PICK</span>`);
+    }
+
     // Press tags win when a restaurant has both — they're pulled from a
     // specific, current article, while the curated Michelin/JBF tags are a
-    // static fallback. Showing both stacked to 6 badges was the bug.
+    // static fallback. Rendered as plain text, not pills — this is
+    // HungryPig's own editorial voice, a sentence, not more metadata chips.
     const traitSource = place.pressTags && place.pressTags.length > 0 ? place.pressTags : place.tags || [];
-    const traits = traitSource
-      .map((t) => `<span class="trait-badge">${escapeHtml(t)}</span>`)
-      .join("");
-    const pressMentions = place.pressMentions || [];
-    const pressStr =
-      pressMentions.length > 0
-        ? `<span class="press-badge" title="${escapeHtml(
-            pressMentions.map((m) => m.source_name || "Featured").join(", ")
-          )}">Featured in ${pressMentions.length} source${pressMentions.length > 1 ? "s" : ""}</span>`
+    const whyHere = traitSource.map((t) => escapeHtml(t)).join(" · ");
+
+    // "What to order" — specific dishes press mentions call out, ranked by
+    // how many separate sources name the same dish (dishes.mention_count
+    // from hungrydb). Only shown once a dish has actually been extracted;
+    // most restaurants without press coverage simply won't have any.
+    const topDishes = place.topDishes || [];
+    const whatToOrder =
+      topDishes.length > 0
+        ? `<div class="what-to-order">
+             <span class="wto-label">What to order</span>
+             <div class="dish-pill-row">${topDishes
+               .map(
+                 (d) =>
+                   `<span class="dish-pill">${escapeHtml(d.name)}${
+                     d.count > 1 ? ` <span class="dish-count">×${d.count}</span>` : ""
+                   }</span>`
+               )
+               .join("")}</div>
+           </div>`
         : "";
 
     const badgeContent = place.isNotable
-      ? `<svg class="badge-star" viewBox="0 0 40 40" aria-hidden="true"><path d="${STAR_PATH}" fill="currentColor"/></svg><span class="badge-num">${i + 1}</span>`
-      : `${i + 1}`;
+      ? `<svg class="badge-star" viewBox="0 0 40 40" aria-hidden="true"><path d="${STAR_PATH}" fill="currentColor"/></svg><span class="badge-num">${num}</span>`
+      : `${num}`;
 
     li.innerHTML = `
       <span class="result-badge">${badgeContent}</span>
       <div class="result-body">
         <h3>${escapeHtml(place.name)}</h3>
-        <div class="result-meta">
-          <span>${place.distance.toFixed(1)} mi</span>
-          ${place.rating != null ? `<span>· <span class="rating">★ ${place.rating.toFixed(1)}</span></span>` : ""}
-          ${place.reviewCount != null ? `<span>(${place.reviewCount})</span>` : ""}
-        </div>
-        <div class="result-sub">
-          ${priceStr ? `${priceStr} · ` : ""}${place.cuisine ? `${escapeHtml(place.cuisine)}` : ""}${place.cuisine && openStr ? " · " : ""}${openStr}
-        </div>
-        ${badges ? `<div class="award-badges">${badges}</div>` : ""}
-        ${pressStr ? `<div class="award-badges">${pressStr}</div>` : ""}
-        ${traits ? `<div class="trait-badges">${traits}</div>` : ""}
+        <div class="result-meta">${metaParts.join(" · ")}</div>
+        ${ratingParts.length > 0 ? `<div class="result-rating">${ratingParts.join(" · ")}</div>` : ""}
+        ${endorsements.length > 0 ? `<div class="endorsement-badges">${endorsements.join("")}</div>` : ""}
+        ${whatToOrder}
+        ${whyHere ? `<div class="why-here">${whyHere}</div>` : ""}
       </div>
       ${place.mapsUrl ? `<button type="button" class="open-external-btn" title="Open in Google Maps" aria-label="Open in Google Maps">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
@@ -703,26 +909,17 @@ function renderResults(results, { fit = true } = {}) {
       // how far in/out the map is, only Google's native double-click does.
       // Focusing one result also isn't "I want to search a new area" —
       // don't pop the search-area button just because we panned.
-      suppressSearchAreaPrompt = true;
-      map.panTo({ lat: place.lat, lng: place.lng });
-      google.maps.event.addListenerOnce(map, "idle", () => {
-        suppressSearchAreaPrompt = false;
-      });
+      withSuppressedInteraction(() => map.panTo({ lat: place.lat, lng: place.lng }));
       highlightMarker(place.id);
     });
-    // Hovering a card grows + lightens its marker (plus a quick bounce) so
-    // scrolling the list gives an obvious "here's where that one is" cue on
-    // the map, without panning the map around while you're just browsing.
-    li.addEventListener("mouseenter", () => {
-      marker.setIcon(place.isNotable ? notableMarkerIcon(String(i + 1), { hovered: true }) : pinMarkerIcon(String(i + 1), { hovered: true }));
-      marker.setZIndex(9999);
-      marker.setAnimation(google.maps.Animation.BOUNCE);
-      setTimeout(() => marker.setAnimation(null), 700);
-    });
-    li.addEventListener("mouseleave", () => {
-      marker.setIcon(place.isNotable ? notableMarkerIcon(String(i + 1)) : pinMarkerIcon(String(i + 1)));
-      marker.setZIndex(place.isNotable ? 999 : 1);
-    });
+    // Hovering a card triggers the same emphasis clicking it (or its map
+    // pin) does, so scrolling the list gives an obvious "here's where that
+    // one is" cue on the map without panning it while you're just
+    // browsing. mouseleave reverts immediately rather than waiting on
+    // highlightMarker's own timeout, since hover has a natural "off" signal
+    // a click doesn't.
+    li.addEventListener("mouseenter", () => highlightMarker(place.id));
+    li.addEventListener("mouseleave", () => setMarkerEmphasized(place.id, false));
     const externalBtn = li.querySelector(".open-external-btn");
     if (externalBtn) {
       externalBtn.addEventListener("click", (e) => {
@@ -739,22 +936,26 @@ function renderResults(results, { fit = true } = {}) {
 // Zooms/pans so every marker (plus the searched-from point) is actually
 // visible, instead of leaving pins scattered outside the current viewport.
 function fitMapToResults(results) {
+  // The user already moved on (dragged/zoomed) while this search was still
+  // in flight — respect wherever they are now instead of yanking the
+  // camera back to stale results. The idle listener above will pick up
+  // their new position and search it once they settle.
+  if (searchInterruptedByUser) return;
+
   const bounds = new google.maps.LatLngBounds();
   if (userLocation) bounds.extend(userLocation);
   results.forEach((r) => bounds.extend({ lat: r.lat, lng: r.lng }));
   if (bounds.isEmpty()) return;
 
-  suppressSearchAreaPrompt = true;
-  map.fitBounds(bounds, 48);
-  // fitBounds can over-zoom when everything is clustered close together
-  // (or there's only one result, e.g. right on page load) — cap it well
-  // short of street-level so it still reads as "here's the neighborhood,"
-  // not a jarring zoom into one block.
-  google.maps.event.addListenerOnce(map, "bounds_changed", () => {
-    if (map.getZoom() > 15) map.setZoom(15);
-  });
-  google.maps.event.addListenerOnce(map, "idle", () => {
-    suppressSearchAreaPrompt = false;
+  withSuppressedInteraction(() => {
+    map.fitBounds(bounds, 48);
+    // fitBounds can over-zoom when everything is clustered close together
+    // (or there's only one result, e.g. right on page load) — cap it well
+    // short of street-level so it still reads as "here's the neighborhood,"
+    // not a jarring zoom into one block.
+    google.maps.event.addListenerOnce(map, "bounds_changed", () => {
+      if (map.getZoom() > 15) map.setZoom(15);
+    });
   });
 }
 

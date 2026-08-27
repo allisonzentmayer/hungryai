@@ -42,6 +42,7 @@ const SEARCH_FIELD_MASK = [
   "places.currentOpeningHours.openNow",
   "places.primaryTypeDisplayName",
   "places.googleMapsUri",
+  "places.businessStatus",
 ].join(",");
 
 const DETAILS_FIELD_MASK = [
@@ -55,7 +56,18 @@ const DETAILS_FIELD_MASK = [
   "currentOpeningHours.openNow",
   "primaryTypeDisplayName",
   "googleMapsUri",
+  "businessStatus",
 ].join(",");
+
+// Google's businessStatus is the live source of truth — unlike
+// restaurants.business_status in Supabase (a snapshot from whenever
+// hungrydb last matched this place, never refreshed), so it also catches
+// places that closed after being press-mentioned. Missing/undefined is
+// treated as operational since Google only omits the field when it has
+// nothing else to report.
+function isOperational(p) {
+  return !p.businessStatus || p.businessStatus === "OPERATIONAL";
+}
 
 // Weighted (Bayesian) rating: pulls low-review-count places toward the
 // neighborhood average instead of letting 1 five-star review win.
@@ -106,6 +118,18 @@ function pressTags(mentions) {
   return tags;
 }
 
+// "What to order" — the restaurant's most-mentioned dishes (across distinct
+// articles, per hungrydb's dishes.mention_count), highest count first,
+// capped so a restaurant with a long tail of once-mentioned items doesn't
+// stretch the card.
+const MAX_TOP_DISHES = 3;
+function topDishes(dishes) {
+  return [...(dishes || [])]
+    .sort((a, b) => b.mention_count - a.mention_count)
+    .slice(0, MAX_TOP_DISHES)
+    .map((d) => ({ name: d.name, count: d.mention_count }));
+}
+
 function placeToResult(p, neighborhoodAvg) {
   return {
     id: p.id,
@@ -122,6 +146,7 @@ function placeToResult(p, neighborhoodAvg) {
     score: weightedScore(p.rating, p.userRatingCount, neighborhoodAvg),
     pressMentions: [],
     pressTags: [],
+    topDishes: [],
   };
 }
 
@@ -142,9 +167,16 @@ async function fetchPressMentions(lat, lng, radiusMeters) {
   // Built by hand rather than via URLSearchParams, since PostgREST needs
   // repeated/compound filter keys (e.g. two "lat=" params) that
   // URLSearchParams doesn't handle cleanly.
+  // business_status=not.eq.CLOSED_PERMANENTLY here is just a cheap
+  // pre-filter on hungrydb's stale, ingest-time snapshot, saving a wasted
+  // Place Details lookup (below) on places already known-dead back then —
+  // it is NOT the source of truth for "is this place open," since a
+  // restaurant can close after being press-mentioned and this column is
+  // never refreshed. isOperational() below, built from a live Google field,
+  // is what actually keeps closed places out of the results.
   const url =
     `${supabaseUrl}/rest/v1/restaurants` +
-    `?select=place_id,name,lat,lng,business_status,mentions(source_name,source_url,reason,tags)` +
+    `?select=place_id,name,lat,lng,business_status,mentions(source_name,source_url,reason,tags),dishes(name,mention_count)` +
     `&lat=gte.${lat - latDelta}&lat=lte.${lat + latDelta}` +
     `&lng=gte.${lng - lngDelta}&lng=lte.${lng + lngDelta}` +
     `&business_status=not.eq.CLOSED_PERMANENTLY`;
@@ -169,6 +201,7 @@ async function fetchPressMentions(lat, lng, radiusMeters) {
         lat: row.lat,
         lng: row.lng,
         mentions: row.mentions || [],
+        dishes: row.dishes || [],
       });
     }
     return map;
@@ -242,7 +275,11 @@ exports.handler = async (event) => {
     }
 
     const placesData = await placesRes.json();
-    const places = placesData.places || [];
+    // Drop permanently/temporarily closed places up front so they never
+    // factor into neighborhoodAvg or show up in results, whether they came
+    // from the uncurated nearby search or (below) a press-mentioned place
+    // that Google's nearby search happened to surface.
+    const places = (placesData.places || []).filter(isOperational);
 
     const ratedPlaces = places.filter((p) => p.rating);
     const neighborhoodAvg =
@@ -261,6 +298,7 @@ exports.handler = async (event) => {
         const info = pressMap.get(r.id);
         r.pressMentions = info.mentions;
         r.pressTags = pressTags(info.mentions);
+        r.topDishes = topDishes(info.dishes);
         r.score += pressBoost(info.mentions.length);
       }
     }
@@ -284,10 +322,12 @@ exports.handler = async (event) => {
 
     detailFetches.forEach((p, i) => {
       if (!p || !p.rating || !p.userRatingCount) return; // skip if no live data available
+      if (!isOperational(p)) return; // closed since hungrydb last matched it
       const [, info] = missing[i];
       const result = placeToResult(p, neighborhoodAvg);
       result.pressMentions = info.mentions;
       result.pressTags = pressTags(info.mentions);
+      result.topDishes = topDishes(info.dishes);
       result.score += pressBoost(info.mentions.length);
       results.push(result);
     });
