@@ -497,7 +497,10 @@ body.app-shell {
   height: 28px;
   padding: 0 5px;
   border-radius: 999px;
-  background: var(--pink-deep);
+  /* Glossy little "gumball" look — matches the highlight added to the map
+     pins, so the badge on a card reads as the same friendly object as its
+     pin rather than a flat, separate style. */
+  background: radial-gradient(circle at 32% 28%, var(--pink-mid), var(--pink-deep) 72%);
   color: white;
   font-size: 0.76rem;
   font-weight: 700;

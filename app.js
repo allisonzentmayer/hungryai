@@ -717,12 +717,19 @@ function currentViewportRadiusMeters() {
 // planted on the exact same point instead of the icon visibly jumping.
 function pinMarkerIcon(labelText, { hovered = false } = {}) {
   const fill = hovered ? "#f291b3" : "#d1477a"; // lighter pink on hover
-  // White circle sized to comfortably fit 2-digit numbers (not just 1) —
-  // badge numbers persist and climb across a browsing session (see
-  // badgeNumberFor/resetBadgeNumbers), so double digits are common, not a
-  // rare edge case.
+  // Little pig ears peeking above the head (on-brand for HungryPig) plus a
+  // glossy highlight, instead of a plain flat teardrop — same numbering,
+  // friendlier package. White circle stays sized to comfortably fit
+  // 2-digit numbers (not just 1) — badge numbers persist and climb across a
+  // browsing session (see badgeNumberFor/resetBadgeNumbers), so double
+  // digits are common, not a rare edge case.
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="30" height="38" viewBox="0 0 30 38">
+    <circle cx="5.5" cy="5" r="4.3" fill="${fill}"/>
+    <circle cx="24.5" cy="5" r="4.3" fill="${fill}"/>
+    <circle cx="5.5" cy="5.8" r="1.9" fill="#fbd7e1"/>
+    <circle cx="24.5" cy="5.8" r="1.9" fill="#fbd7e1"/>
     <path d="M15 0C6.716 0 0 6.716 0 15c0 10.5 15 23 15 23s15-12.5 15-23C30 6.716 23.284 0 15 0z" fill="${fill}"/>
+    <ellipse cx="10.5" cy="9" rx="5" ry="3.5" fill="#fff" opacity="0.25"/>
     <circle cx="15" cy="15" r="8" fill="#fff"/>
     <text x="15" y="15" text-anchor="middle" dominant-baseline="central" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="9.5" font-weight="700" letter-spacing="-0.3" fill="${fill}">${labelText}</text>
   </svg>`;
@@ -740,6 +747,7 @@ function notableMarkerIcon(labelText, { hovered = false } = {}) {
   const fill = hovered ? "#f6c15c" : "#f0a020"; // lighter gold on hover — stays in its own color family rather than shifting to pink
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40">
     <path d="${STAR_PATH}" fill="${fill}" stroke="#c97f0a" stroke-width="1.2" stroke-linejoin="round"/>
+    <ellipse cx="15" cy="12" rx="5" ry="3" fill="#fff" opacity="0.3"/>
     <text x="20" y="21" text-anchor="middle" dominant-baseline="central" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="9.5" font-weight="700" letter-spacing="-0.3" fill="#3a2233">${labelText}</text>
   </svg>`;
   const scale = hovered ? 1.3 : 1;
@@ -763,10 +771,14 @@ function awardBadgeText(award) {
 function setMarkerEmphasized(id, emphasized) {
   const marker = markersById.get(id);
   if (!marker) return;
-  const idx = lastResults.findIndex((r) => r.id === id);
-  if (idx === -1) return;
-  const place = lastResults[idx];
-  const labelText = String(idx + 1);
+  const place = lastResults.find((r) => r.id === id);
+  if (!place) return;
+  // Must match the number renderResults() assigned via badgeNumberFor —
+  // this used to independently recompute a label from lastResults' array
+  // position instead, which drifted out of sync with the card's number the
+  // moment a pin got hovered/clicked (the pin would silently start showing
+  // its list position instead of its stable badge number).
+  const labelText = String(badgeNumberFor(place.id));
   const iconFn = place.isNotable ? notableMarkerIcon : pinMarkerIcon;
   marker.setIcon(iconFn(labelText, { hovered: emphasized }));
   marker.setZIndex(emphasized ? 9999 : place.isNotable ? 999 : 1);
