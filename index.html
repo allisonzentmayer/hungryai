@@ -206,6 +206,38 @@
     </section>
   </main>
 
+  <!-- Location-off recovery banner: shown to return visitors when a fresh
+       fix fails or is blocked but we still have their last known area on
+       screen. Dismissible; contents are static, JS only toggles [hidden]. -->
+  <div id="locationBanner" class="loc-banner" role="status" hidden>
+    <span class="loc-banner-text">Showing your last area — turn on location for what's near you now.</span>
+    <button type="button" class="loc-banner-btn">Turn on</button>
+    <button type="button" class="loc-banner-close" aria-label="Dismiss">&times;</button>
+  </div>
+
+  <!-- Location recovery modal. #locModalBody is filled by app.js
+       (renderLocationModal) with either the "denied" or "unavailable"
+       variant. Starts [hidden]; opened only when geolocation gives us
+       nothing usable and there's no cached area to fall back to. -->
+  <div id="locationModal" class="loc-modal-backdrop" hidden>
+    <div class="loc-modal" role="dialog" aria-modal="true" aria-labelledby="locModalTitle" tabindex="-1">
+      <button type="button" class="loc-modal-close" aria-label="Close">&times;</button>
+      <svg class="loc-modal-pig" viewBox="0 0 120 110" aria-hidden="true">
+        <ellipse cx="40" cy="26" rx="12" ry="14" fill="#f6a8c0"/>
+        <ellipse cx="80" cy="26" rx="12" ry="14" fill="#f6a8c0"/>
+        <ellipse cx="40" cy="28" rx="6" ry="7" fill="#e37da0"/>
+        <ellipse cx="80" cy="28" rx="6" ry="7" fill="#e37da0"/>
+        <ellipse cx="60" cy="58" rx="34" ry="30" fill="#f9c4d6"/>
+        <circle cx="46" cy="51" r="3" fill="#3a2233"/>
+        <circle cx="74" cy="51" r="3" fill="#3a2233"/>
+        <ellipse cx="60" cy="66" rx="15" ry="11" fill="#f291b3"/>
+        <circle cx="54" cy="66" r="2.6" fill="#b84b72"/>
+        <circle cx="66" cy="66" r="2.6" fill="#b84b72"/>
+      </svg>
+      <div id="locModalBody" class="loc-modal-body"></div>
+    </div>
+  </div>
+
   <script src="mascot-oink.js"></script>
   <script src="app.js"></script>
   <!--
