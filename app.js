@@ -176,6 +176,7 @@ function initMap() {
     attemptLocate();
   });
   document.getElementById("enableLocationBtn").addEventListener("click", attemptLocate);
+  wireLocationRecoveryUI();
   document.getElementById("zipBtn").addEventListener("click", attemptZipSearch);
   document.getElementById("zipInput").addEventListener("keydown", (e) => {
     if (e.key === "Enter") {
@@ -229,11 +230,12 @@ function initMap() {
   }
 
   // Default to the user's location automatically on load.
-  initLocationOnLoad();
+  initLocationOnLoad(Boolean(cachedLocation));
 
   map.addListener("click", (e) => {
     searchInterruptedByUser = false;
     userLocation = { lat: e.latLng.lat(), lng: e.latLng.lng() };
+    clearLocationUI();
     hideLocationButton();
     runSearch();
   });
@@ -404,33 +406,34 @@ function chooseForMe() {
   if (pick.mapsUrl) window.open(pick.mapsUrl, "_blank");
 }
 
+// Resolves with a { lat, lng } fix. Deliberately side-effect-free — it does
+// NOT touch userLocation / the map / the cache. Each caller decides what to
+// do with a fix: the foreground locate recenters and searches; the silent
+// background refine only recenters if the fix actually moved.
 function locateUser() {
   return new Promise((resolve, reject) => {
     if (!navigator.geolocation) return reject({ code: 0 });
 
     // Belt-and-suspenders timeout: the PositionOptions.timeout below is
-    // supposed to guarantee the error callback fires within 15s even on
-    // total failure, but some mobile browsers don't honor it while a
-    // permission prompt is still pending/unanswered — neither callback
-    // fires at all, and the UI is stuck on "Finding your location…"
-    // forever. This settles the promise ourselves a beat later regardless
-    // of what the browser does internally.
+    // supposed to guarantee the error callback fires even on total failure,
+    // but some mobile browsers don't honor it while a permission prompt is
+    // still pending/unanswered — neither callback fires at all, and the UI
+    // is stuck on "Finding your location…" forever. This settles the promise
+    // ourselves a beat past the PositionOptions timeout regardless of what
+    // the browser does internally.
     let settled = false;
     const fallbackTimer = setTimeout(() => {
       if (settled) return;
       settled = true;
       reject({ code: 3 });
-    }, 16000);
+    }, 10000);
 
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         if (settled) return;
         settled = true;
         clearTimeout(fallbackTimer);
-        userLocation = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-        map.setCenter(userLocation);
-        cacheLocation(userLocation);
-        resolve();
+        resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude });
       },
       (err) => {
         if (settled) return;
@@ -438,11 +441,31 @@ function locateUser() {
         clearTimeout(fallbackTimer);
         reject(err);
       },
-      // maximumAge lets the browser hand back a recent cached fix instead of
-      // forcing a fresh (slower, more failure-prone) lookup on every load.
-      { timeout: 15000, maximumAge: 5 * 60 * 1000 }
+      // enableHighAccuracy: false (the default, but explicit) — a wifi/cell
+      // fix is both much faster and far less likely to fail than waiting on
+      // GPS, and block-level precision doesn't matter for "food near me."
+      // The generous maximumAge lets the browser hand back a recent cached
+      // fix instantly instead of forcing a fresh lookup on every load.
+      { timeout: 9000, maximumAge: 10 * 60 * 1000, enableHighAccuracy: false }
     );
   });
+}
+
+// navigator.permissions.query for "geolocation" — used ONLY as an
+// optimization: when it reliably reports "denied" we can skip a
+// getCurrentPosition() call that we know will just burn its full timeout and
+// fail, and show the recovery UI immediately instead. Never the sole gate —
+// support is patchy (older Safari especially), so null / a throw here just
+// means "proceed as normal and let getCurrentPosition sort it out."
+// Returns "granted" | "prompt" | "denied" | null.
+async function queryGeoPermission() {
+  try {
+    if (!navigator.permissions || !navigator.permissions.query) return null;
+    const status = await navigator.permissions.query({ name: "geolocation" });
+    return status.state;
+  } catch (_err) {
+    return null;
+  }
 }
 
 function geocodeZip(zip) {
@@ -459,51 +482,74 @@ function geocodeZip(zip) {
   });
 }
 
-function attemptZipSearch() {
-  const zip = document.getElementById("zipInput").value.trim();
+// Geocode a zip string and search there. Resolves true on success, false on
+// a bad/empty zip (so callers like the recovery modal know whether to close
+// themselves). Shared by the sidebar zip field and the "couldn't find you"
+// modal.
+function runZipSearch(rawZip) {
+  const zip = (rawZip || "").trim();
   if (!zip) {
     setStatus("Enter a zip code first.");
-    return;
+    return Promise.resolve(false);
   }
 
-  hideLocationButton();
   setStatus("Looking up that zip code…");
-  geocodeZip(zip)
+  return geocodeZip(zip)
     .then((loc) => {
       searchInterruptedByUser = false;
       userLocation = loc;
+      clearLocationUI();
+      hideLocationButton();
       withSuppressedInteraction(() => {
         map.setCenter(loc);
         map.setZoom(14);
       });
       setStatus("");
       runSearch();
+      return true;
     })
     .catch(() => {
       setStatus("Couldn't find that zip code — check it and try again.");
+      return false;
     });
 }
 
-// Tried gating the automatic attempt on navigator.permissions.query()'s
-// reported state (only auto-locate when already "granted"), to dodge
-// browsers that silently ignore a gesture-less getCurrentPosition() call on
-// a first visit. That backfired — support for querying the "geolocation"
-// permission is inconsistent across browsers (notably Safari), so it made
-// the very first attempt flaky in a *different* way instead of fixing it.
-// Simpler and more robust: always attempt automatically, and show the
-// fallback button immediately rather than waiting for a failure — so
-// there's always a guaranteed one-tap path available up front, regardless
-// of whether the silent automatic attempt works, fails, or never resolves.
-function initLocationOnLoad() {
-  showLocationButton();
-  attemptLocate();
+function attemptZipSearch() {
+  return runZipSearch(document.getElementById("zipInput").value);
 }
 
-// Asks for location access (the browser shows its own permission prompt) and
-// uses the result once granted. The fallback button is left visible for the
-// duration of the attempt (not just after a failure) and only hidden on an
-// actual successful fix, so a silently-stuck attempt never leaves the user
-// with nothing to click.
+// Runs on page load. Two entry states:
+//   - Return visitor (initMap already kicked off a search against their
+//     cached location): quietly refine in the background, and only disrupt
+//     the screen if the fresh fix is somewhere genuinely different.
+//   - First-time visitor: a normal foreground locate, with "Finding your
+//     location…" shown.
+// Either way, if the browser already firmly reports permission as "denied",
+// skip straight to the recovery UI — a getCurrentPosition() call there would
+// just sit burning its timeout before failing.
+async function initLocationOnLoad(haveCached) {
+  const perm = await queryGeoPermission();
+
+  if (perm === "denied") {
+    if (haveCached) {
+      // Results are already loading from the cached area — just flag that
+      // location is off and offer to turn it on.
+      showLocationBanner();
+      showLocationButton("Turn on location");
+    } else {
+      openLocationModal("denied");
+    }
+    return;
+  }
+
+  if (haveCached) {
+    refineLocationInBackground();
+  } else {
+    showLocationButton();
+    attemptLocate();
+  }
+}
+
 // A search already covers this spot if we've fetched for somewhere within
 // ~0.4 mi of it — used to skip a redundant re-search when geolocation
 // resolves right on top of the location we already prefetched against on
@@ -512,41 +558,75 @@ function alreadySearchedNear(loc) {
   return lastSearchedLocation != null && milesBetween(lastSearchedLocation, loc) < 0.4;
 }
 
+// Foreground "where am I" — the browser shows its own permission prompt.
+// Used by the initial load (no cached location), the header CTA, the map
+// locate button, and every "Try again" in the recovery UI.
 function attemptLocate() {
   setStatus("Finding your location…");
   return locateUser()
-    .then(() => {
+    .then((fix) => {
+      searchInterruptedByUser = false;
+      userLocation = fix;
+      cacheLocation(fix);
+      withSuppressedInteraction(() => map.setCenter(fix));
       setStatus("");
+      clearLocationUI();
       hideLocationButton();
-      // locateUser() already recentered the map on the real fix. If the
-      // on-load prefetch against the cached location already covers it,
-      // don't fetch again.
-      if (alreadySearchedNear(userLocation)) return;
+      if (alreadySearchedNear(fix)) return;
       runInitialSearch();
     })
     .catch((err) => {
-      // A fresh fix failed — fall back to wherever we found them last time
-      // rather than leaving the map on the hardcoded NYC default. The
-      // location button stays visible either way, since this wasn't an
-      // actual successful fix.
+      // A fresh fix failed. If we know where they were last time, fall back
+      // to that rather than the hardcoded NYC default, and just flag that
+      // location is off — don't block the screen with a modal when we have
+      // something useful to show.
       const cachedLocation = loadCachedLocation();
       if (cachedLocation) {
         userLocation = cachedLocation;
-        map.setCenter(cachedLocation);
-        setStatus("Couldn't get a fresh location — showing your last known area.");
+        withSuppressedInteraction(() => map.setCenter(cachedLocation));
+        setStatus("");
         if (!alreadySearchedNear(cachedLocation)) runInitialSearch();
-        // We do have somewhere to show them, so "enable location access"
-        // would be a confusing ask — offer a fresh, precise fix instead.
-        showLocationButton("Update my location");
+        showLocationButton(err && err.code === 1 ? "Turn on location" : "Update my location");
+        showLocationBanner();
         return;
-      } else if (err && err.code === 1) {
-        setStatus("Location access denied — enable it for this site, then try again, or enter a zip code below.");
-      } else if (err && err.code === 3) {
-        setStatus("Location took too long to find — try again, or enter a zip code below.");
-      } else {
-        setStatus("Couldn't get your location — click the map to drop a pin, or enter a zip code below.");
       }
-      showLocationButton();
+      // Nothing to show. code 1 = permission denied (fixable — explain how);
+      // anything else (timeout, position unavailable, no geolocation API) =
+      // transient/unknown, so lead with the zip-code path instead.
+      setStatus("");
+      openLocationModal(err && err.code === 1 ? "denied" : "unavailable");
+      showLocationButton(err && err.code === 1 ? "Turn on location" : "Enable location access");
+    });
+}
+
+// Silent counterpart to attemptLocate() for return visitors — cached-area
+// results are already on screen (see initMap), so this must not flash a
+// status message, yank the map, or pop a modal on failure. It only steps in
+// when the fresh fix is far enough from the cached one to matter.
+function refineLocationInBackground() {
+  return locateUser()
+    .then((fix) => {
+      cacheLocation(fix);
+      clearLocationUI();
+      hideLocationButton();
+      // The user started driving the map while we were resolving — the idle
+      // handler has already searched wherever they went. Leave it be.
+      if (searchInterruptedByUser) return;
+      const moved = !userLocation || milesBetween(userLocation, fix) > 0.4;
+      userLocation = fix;
+      if (!moved || alreadySearchedNear(fix)) return;
+      searchInterruptedByUser = false;
+      withSuppressedInteraction(() => map.setCenter(fix));
+      runInitialSearch();
+    })
+    .catch((err) => {
+      // Denied since last visit → surface the (dismissible) banner. A
+      // timeout or unavailable position stays completely silent; the
+      // cached-area results are a fine place to be.
+      if (err && err.code === 1) {
+        showLocationBanner();
+        showLocationButton("Turn on location");
+      }
     });
 }
 
@@ -583,6 +663,183 @@ function hideLocationButton() {
 
 function setStatus(msg) {
   document.getElementById("status").textContent = msg;
+}
+
+// ---- Location recovery UI (modal + banner) -------------------------------
+// Shown when geolocation can't give us a usable position and we can't
+// silently fall back to a cached area. A real dialog (backdrop, Esc, focus
+// pulled in and trapped) rather than an inline note, because "we don't know
+// where you are" blocks the entire app. Two modes:
+//   "denied"      — permission is blocked: show how to switch it back on
+//                   (browsers expose no API to open OS/site settings for us,
+//                   so this is written steps + a Try again button)
+//   "unavailable" — timed out / position unavailable / no geolocation API:
+//                   lead with a zip-code box, offer to retry location
+
+let restoreFocusEl = null;
+
+// Per-platform written steps for re-granting location. Best-effort — the
+// wording won't match every browser version exactly, but it points at the
+// right place. There is deliberately no "open settings" button: no web API
+// can do that on any platform.
+function locationHelpSteps() {
+  const ua = navigator.userAgent || "";
+  if (/iPhone|iPad|iPod/i.test(ua)) {
+    return [
+      "Open the Settings app → Privacy & Security → Location Services, and check it's on.",
+      "Find your browser (Safari or Chrome) in that list, tap it, and choose “While Using the App”.",
+      "Come back here and tap Try again.",
+    ];
+  }
+  if (/Android/i.test(ua)) {
+    return [
+      "Tap your browser's ⋮ menu → Settings → Site settings → Location.",
+      "Turn Location on, and remove this site from the Blocked list if it's there.",
+      "Reload this page and tap Try again.",
+    ];
+  }
+  return [
+    "Click the lock (or “Site information”) icon at the left of the address bar.",
+    "Set Location to Allow.",
+    "Reload this page and click Try again.",
+  ];
+}
+
+function renderLocationModal(mode) {
+  const body = document.getElementById("locModalBody");
+  if (mode === "unavailable") {
+    body.innerHTML = `
+      <h2 id="locModalTitle">We couldn't find your location</h2>
+      <p>No problem — tell us roughly where to look.</p>
+      <div class="loc-modal-zip">
+        <input type="text" id="locModalZip" inputmode="numeric" autocomplete="postal-code" placeholder="Enter a zip code" aria-label="Zip code" />
+        <button type="button" class="cta-btn" data-loc-act="zipgo">Go</button>
+      </div>
+      <p class="loc-modal-alt"><button type="button" class="linklike" data-loc-act="retry">Try my location again</button></p>
+    `;
+  } else {
+    body.innerHTML = `
+      <h2 id="locModalTitle">Location is switched off</h2>
+      <p>HungryPig uses your location to find good food nearby, and your browser is blocking it right now. Here's how to switch it back on:</p>
+      <ol class="loc-modal-steps">${locationHelpSteps().map((s) => `<li>${escapeHtml(s)}</li>`).join("")}</ol>
+      <button type="button" class="cta-btn loc-modal-primary" data-loc-act="retry">Try again</button>
+      <p class="loc-modal-alt">Rather not? <button type="button" class="linklike" data-loc-act="zip">Search by zip code instead</button></p>
+    `;
+  }
+}
+
+function openLocationModal(mode = "denied") {
+  renderLocationModal(mode);
+  const backdrop = document.getElementById("locationModal");
+  if (!backdrop.hidden) return; // already open — just re-rendered contents
+  restoreFocusEl = document.activeElement;
+  backdrop.hidden = false;
+  const zip = document.getElementById("locModalZip");
+  (zip || backdrop.querySelector(".loc-modal")).focus();
+}
+
+function closeLocationModal() {
+  const backdrop = document.getElementById("locationModal");
+  if (backdrop.hidden) return;
+  backdrop.hidden = true;
+  if (restoreFocusEl && typeof restoreFocusEl.focus === "function") restoreFocusEl.focus();
+  restoreFocusEl = null;
+}
+
+function showLocationBanner() {
+  const banner = document.getElementById("locationBanner");
+  if (banner.dataset.dismissed === "true") return;
+  banner.hidden = false;
+}
+
+function hideLocationBanner() {
+  document.getElementById("locationBanner").hidden = true;
+}
+
+// Called the instant we get any usable location (fresh fix, cached fallback
+// that the user accepted via retry, or a zip search) — nothing in the
+// recovery UI should linger once we know where to look.
+function clearLocationUI() {
+  closeLocationModal();
+  hideLocationBanner();
+}
+
+// Open the sidebar criteria panel (a collapsed accordion on mobile) and put
+// the cursor in its zip field — the "search by zip instead" escape hatch
+// from the denied modal.
+function focusSidebarZip() {
+  const toggle = document.getElementById("controlsToggle");
+  if (toggle && toggle.getAttribute("aria-expanded") !== "true") {
+    toggle.setAttribute("aria-expanded", "true");
+  }
+  const input = document.getElementById("zipInput");
+  input.scrollIntoView({ behavior: "smooth", block: "center" });
+  input.focus();
+}
+
+function wireLocationRecoveryUI() {
+  const backdrop = document.getElementById("locationModal");
+  const body = document.getElementById("locModalBody");
+
+  backdrop.querySelector(".loc-modal-close").addEventListener("click", closeLocationModal);
+  backdrop.addEventListener("click", (e) => {
+    if (e.target === backdrop) closeLocationModal();
+  });
+
+  document.addEventListener("keydown", (e) => {
+    if (backdrop.hidden) return;
+    if (e.key === "Escape") {
+      closeLocationModal();
+      return;
+    }
+    if (e.key !== "Tab") return;
+    // Minimal focus trap — keep Tab inside the dialog while it's open.
+    const focusable = backdrop.querySelectorAll("button, input, a[href]");
+    if (!focusable.length) return;
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    if (e.shiftKey && document.activeElement === first) {
+      e.preventDefault();
+      last.focus();
+    } else if (!e.shiftKey && document.activeElement === last) {
+      e.preventDefault();
+      first.focus();
+    }
+  });
+
+  const runModalZip = () => {
+    const input = document.getElementById("locModalZip");
+    runZipSearch(input ? input.value : "").then((ok) => {
+      if (ok) closeLocationModal();
+    });
+  };
+
+  body.addEventListener("click", (e) => {
+    const act = e.target.closest("[data-loc-act]");
+    if (!act) return;
+    if (act.dataset.locAct === "retry") {
+      closeLocationModal();
+      attemptLocate();
+    } else if (act.dataset.locAct === "zip") {
+      closeLocationModal();
+      focusSidebarZip();
+    } else if (act.dataset.locAct === "zipgo") {
+      runModalZip();
+    }
+  });
+  body.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && e.target.id === "locModalZip") {
+      e.preventDefault();
+      runModalZip();
+    }
+  });
+
+  const banner = document.getElementById("locationBanner");
+  banner.querySelector(".loc-banner-btn").addEventListener("click", attemptLocate);
+  banner.querySelector(".loc-banner-close").addEventListener("click", () => {
+    banner.dataset.dismissed = "true";
+    hideLocationBanner();
+  });
 }
 
 // Snap coordinates to a ~110m grid before putting them in the request URL.

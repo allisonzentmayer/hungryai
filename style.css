@@ -729,6 +729,146 @@ body.app-shell {
    the header version is hidden on mobile (see the mobile block). */
 .about-cta { display: none; }
 
+/* ---------- location recovery (modal + banner) ---------- */
+/* Shown only when geolocation gives us nothing usable — see app.js
+   openLocationModal() / showLocationBanner(). Reuses the app's existing
+   tokens and the .cta-btn pill rather than introducing a new button style. */
+.loc-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.25rem;
+  background: rgba(58, 34, 51, 0.55);
+}
+.loc-modal-backdrop[hidden] { display: none; }
+.loc-modal {
+  position: relative;
+  width: 100%;
+  max-width: 380px;
+  max-height: calc(100vh - 2.5rem);
+  overflow-y: auto;
+  background: var(--paper);
+  border-radius: 16px;
+  border-top: 4px solid var(--pink-deep);
+  padding: 1.75rem 1.5rem 1.5rem;
+  box-shadow: 0 12px 40px rgba(58, 34, 51, 0.35);
+  text-align: center;
+}
+.loc-modal:focus { outline: none; }
+.loc-modal-close {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.6rem;
+  width: 30px;
+  height: 30px;
+  border: none;
+  background: none;
+  font-size: 1.5rem;
+  line-height: 1;
+  color: var(--muted);
+  cursor: pointer;
+  border-radius: 50%;
+}
+.loc-modal-close:hover { background: var(--line); color: var(--ink); }
+.loc-modal-pig { width: 74px; height: auto; margin: 0 auto 0.5rem; display: block; }
+.loc-modal-body h2 {
+  margin: 0 0 0.5rem;
+  font-size: 1.15rem;
+  color: var(--ink);
+}
+.loc-modal-body p {
+  margin: 0 0 1rem;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  color: var(--muted);
+}
+.loc-modal-steps {
+  text-align: left;
+  margin: 0 0 1.25rem;
+  padding-left: 1.2rem;
+  font-size: 0.88rem;
+  line-height: 1.5;
+  color: var(--ink);
+}
+.loc-modal-steps li { margin-bottom: 0.5rem; }
+.loc-modal .cta-btn { width: 100%; justify-content: center; }
+.loc-modal-zip { display: flex; gap: 0.5rem; margin-bottom: 0.9rem; }
+.loc-modal-zip input {
+  flex: 1;
+  min-width: 0;
+  padding: 0.6rem 0.9rem;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  font-size: 0.95rem;
+  background: white;
+  color: var(--ink);
+}
+.loc-modal-zip input:focus {
+  outline: none;
+  border-color: var(--pink-deep);
+  box-shadow: 0 0 0 3px rgba(209, 71, 122, 0.15);
+}
+.loc-modal-zip .cta-btn { width: auto; flex-shrink: 0; }
+.loc-modal-alt { margin: 0.75rem 0 0; font-size: 0.85rem; color: var(--muted); }
+.linklike {
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  color: var(--pink-deep);
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+.linklike:hover { color: var(--pink-dark); }
+
+.loc-banner {
+  position: fixed;
+  left: 50%;
+  bottom: 1rem;
+  transform: translateX(-50%);
+  z-index: 900;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  max-width: calc(100vw - 2rem);
+  padding: 0.6rem 0.7rem 0.6rem 1rem;
+  background: var(--ink);
+  color: white;
+  border-radius: 999px;
+  box-shadow: 0 6px 24px rgba(58, 34, 51, 0.35);
+  font-size: 0.85rem;
+}
+.loc-banner[hidden] { display: none; }
+.loc-banner-text { line-height: 1.35; }
+.loc-banner-btn {
+  flex-shrink: 0;
+  border: none;
+  background: var(--pink-deep);
+  color: white;
+  font-weight: 700;
+  font-size: 0.8rem;
+  padding: 0.4rem 0.9rem;
+  border-radius: 999px;
+  cursor: pointer;
+}
+.loc-banner-btn:hover { background: var(--pink-dark); }
+.loc-banner-close {
+  flex-shrink: 0;
+  border: none;
+  background: none;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 1.2rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 0.25rem;
+}
+.loc-banner-close:hover { color: white; }
+
 /* ---------- mobile ---------- */
 /* Kept as one block at the end of the file, on purpose: CSS resolves ties
    between equal-specificity rules by source order, so any mobile override
