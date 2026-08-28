@@ -11,13 +11,17 @@
 // Nearby Search plus up to a dozen Place Details round trips, all uncached,
 // times five when the radius-widen fallback fired — now happens OFFLINE, in
 // the hungrydb repo's `enrich_restaurants.py` (scheduled a few times a
-// day), which writes rating / review count / price / opening hours /
-// business status straight onto the `restaurants` rows. Here we just read
-// those columns and compute "open now" locally from the stored hours.
+// day), which writes price / cuisine / opening hours / business status
+// straight onto the `restaurants` rows. Here we just read those columns and
+// compute "open now" locally from the stored hours.
 //
-// SHOW_UNCURATED_GOOGLE_RESULTS still brings back the old "everything
-// nearby, boosted if press-mentioned" behavior — but now it's the ONLY
-// thing that makes a live Google call, and it's off by default.
+// Ranking is purely press-driven: results are the restaurants hungrydb has
+// ingested from food press, scored by how many independent write-ups
+// mention them. No Google rating / review count anywhere on this path.
+//
+// SHOW_UNCURATED_GOOGLE_RESULTS still brings back "everything nearby too"
+// (appended below the press picks) — but it's the ONLY thing that makes a
+// live Google call, and it's off by default.
 
 const SHOW_UNCURATED_GOOGLE_RESULTS = false;
 
@@ -49,8 +53,8 @@ const WIDEN_TIERS_METERS = [4828, 16093, 50000];
 const MAX_RESULTS = 60;
 
 // --- caching --------------------------------------------------------------
-// L1: module scope — survives across warm invocations of the same container
-// (the keep-warm scheduled function keeps one alive), costs nothing.
+// L1: module scope — survives across warm invocations of the same
+// container, costs nothing.
 // L2: Netlify Blobs — shared across containers, survives cold starts. Loaded
 // lazily and defensively: if the package/runtime isn't available the whole
 // thing just degrades to L1 + a live Supabase read, no hard failure.
@@ -123,20 +127,29 @@ async function writeCache(key, rows) {
   }
 }
 
-// --- ranking helpers -----------------------------------------------------
-function weightedScore(rating, reviewCount, neighborhoodAvg, minReviews = 30) {
-  if (!rating || !reviewCount) return 0;
-  const v = reviewCount;
-  const m = minReviews;
-  return (v / (v + m)) * rating + (m / (v + m)) * neighborhoodAvg;
-}
-
-function pressBoost(mentionCount) {
-  return Math.min(mentionCount, 3) * 0.15;
+// --- ranking -----------------------------------------------------------
+// Ranking is purely press-driven now — no Google rating / review count in
+// play. A place's score is how many independent write-ups mention it
+// (capped), the "repetition = consensus" signal made numeric. Ties break
+// on distance, back in the handler.
+function pressScore(mentionCount) {
+  return Math.min(mentionCount, 5);
 }
 
 function isOperational(status) {
   return !status || status === "OPERATIONAL";
+}
+
+// Rough distance in meters — only used as a tie-breaker in the final sort.
+function approxDistanceMeters(a, b) {
+  const R = 6371000;
+  const toRad = (d) => (d * Math.PI) / 180;
+  const dLat = toRad(b.lat - a.lat);
+  const dLng = toRad(b.lng - a.lng);
+  const h =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(a.lat)) * Math.cos(toRad(b.lat)) * Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.asin(Math.sqrt(h));
 }
 
 const MAX_PRESS_TAGS = 3;
@@ -198,7 +211,7 @@ function isOpenNow(hours, utcOffsetMinutes) {
 // Rough lat/lng box, not true geo-radius — fine at this scale. Best effort:
 // missing config or a Supabase blip returns [] rather than erroring out.
 const ENRICHED_SELECT =
-  "place_id,name,address,lat,lng,business_status,rating,review_count,price_level," +
+  "place_id,name,address,lat,lng,business_status,price_level," +
   "primary_type,google_maps_uri,regular_opening_hours,utc_offset_minutes," +
   "mentions(source_name,source_url,reason,tags),dishes(name,mention_count)";
 const LEGACY_SELECT =
@@ -225,7 +238,8 @@ async function fetchPressRestaurants(lat, lng, radiusMeters) {
   if (!res.ok) {
     // Most likely the enrichment columns don't exist yet (migration not
     // run). Fall back to the pre-enrichment shape so search still works —
-    // openNow/rating just come back null until the migration + job run.
+    // openNow / price / cuisine just come back null until the migration
+    // and the first enrichment pass run.
     console.error("Supabase enriched select failed, retrying legacy:", await res.text());
     res = await run(LEGACY_SELECT);
     if (!res.ok) {
@@ -250,7 +264,9 @@ async function getPressRows(lat, lng, radiusMeters) {
 }
 
 // --- escape hatch: live uncurated Google Nearby Search ------------------
-async function fetchGoogleNearby(lat, lng, radius, neighborhoodAvg, seenIds) {
+// Off by default. When on, these get appended below the press-mentioned
+// results, ranked by raw Google rating (no press score of their own).
+async function fetchGoogleNearby(lat, lng, radius, seenIds) {
   const apiKey = process.env.GOOGLE_PLACES_API_KEY;
   if (!apiKey) return [];
   const res = await fetch(PLACES_SEARCH_URL, {
@@ -269,26 +285,19 @@ async function fetchGoogleNearby(lat, lng, radius, neighborhoodAvg, seenIds) {
   if (!res.ok) return [];
   const data = await res.json();
   return (data.places || [])
-    .filter(
-      (p) =>
-        isOperational(p.businessStatus) &&
-        p.rating &&
-        p.userRatingCount &&
-        !seenIds.has(p.id)
-    )
+    .filter((p) => isOperational(p.businessStatus) && !seenIds.has(p.id))
     .map((p) => ({
       id: p.id,
       name: p.displayName?.text,
       address: p.formattedAddress,
       lat: p.location?.latitude,
       lng: p.location?.longitude,
-      rating: p.rating,
-      reviewCount: p.userRatingCount,
       priceLevel: p.priceLevel || null,
       openNow: p.currentOpeningHours?.openNow ?? null,
       cuisine: p.primaryTypeDisplayName?.text || null,
       mapsUrl: p.googleMapsUri,
-      score: weightedScore(p.rating, p.userRatingCount, neighborhoodAvg),
+      score: -1, // always below any press-mentioned place
+      googleRating: p.rating ?? 0,
       pressMentions: [],
       pressTags: [],
       topDishes: [],
@@ -309,7 +318,7 @@ exports.handler = async (event) => {
   try {
     // Walk outward through the radius tiers until something turns up (or we
     // hit the cap). Each read is cached, so a repeat search anywhere near
-    // here — including the keep-warm ping — is essentially free.
+    // here is essentially free.
     const tiers = [reqRadius, ...WIDEN_TIERS_METERS.filter((r) => r > reqRadius)];
     let rows = [];
     let usedRadius = reqRadius;
@@ -319,36 +328,23 @@ exports.handler = async (event) => {
       if (rows.length > 0) break;
     }
 
-    // Neighborhood average for the weighted (Bayesian) rating. We only have
-    // press-mentioned places here, not a full nearby sample, so fall back to
-    // a sane constant when there's too little to average.
-    const rated = rows.filter((r) => r.rating && r.review_count);
-    const neighborhoodAvg =
-      rated.length >= 5
-        ? rated.reduce((sum, r) => sum + r.rating, 0) / rated.length
-        : 4.2;
-
     let results = rows
       .filter((r) => isOperational(r.business_status))
       .map((r) => {
         const mentions = r.mentions || [];
-        let score = weightedScore(r.rating, r.review_count, neighborhoodAvg);
-        score += pressBoost(mentions.length);
         return {
           id: r.place_id,
           name: r.name,
           address: r.address || null,
           lat: r.lat,
           lng: r.lng,
-          rating: r.rating ?? null,
-          reviewCount: r.review_count ?? null,
           priceLevel: r.price_level || null,
           openNow: isOpenNow(r.regular_opening_hours, r.utc_offset_minutes),
           cuisine: r.primary_type || null,
           mapsUrl:
             r.google_maps_uri ||
             `https://www.google.com/maps/place/?q=place_id:${r.place_id}`,
-          score,
+          score: pressScore(mentions.length),
           pressMentions: mentions,
           pressTags: pressTags(mentions),
           topDishes: topDishes(r.dishes || []),
@@ -359,11 +355,17 @@ exports.handler = async (event) => {
       results = results.filter((r) => r.pressMentions.length > 0);
     } else {
       const seen = new Set(results.map((r) => r.id));
-      const extra = await fetchGoogleNearby(lat, lng, usedRadius, neighborhoodAvg, seen);
+      const extra = await fetchGoogleNearby(lat, lng, usedRadius, seen);
       results = results.concat(extra);
     }
 
-    results.sort((a, b) => b.score - a.score);
+    // Most-mentioned first; ties (and the uncurated tail) break on distance.
+    results.sort(
+      (a, b) =>
+        b.score - a.score ||
+        (b.googleRating ?? 0) - (a.googleRating ?? 0) ||
+        approxDistanceMeters({ lat, lng }, a) - approxDistanceMeters({ lat, lng }, b)
+    );
     results = results.slice(0, MAX_RESULTS);
 
     return {
