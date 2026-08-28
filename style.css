@@ -327,6 +327,10 @@ body.app-shell {
 /* Desktop keeps the mascot at the bottom of the sidebar (above); this
    second copy below the map is mobile-only — see the mobile block. */
 .mobile-mascot { display: none; }
+/* Desktop shows #map and .results side by side permanently — this toggle
+   (and the map/list split it drives) only exists on mobile, where there's
+   only room for one at a time. See the mobile block. */
+.mobile-view-toggle { display: none; }
 .speech-bubble {
   position: relative;
   background: white;
@@ -624,6 +628,28 @@ body.app-shell {
 .open-external-btn:hover { background: var(--pink-pale); }
 .open-external-btn svg { width: 14px; height: 14px; }
 
+/* Mobile only — desktop already shows the map alongside the list, so
+   there's nothing for this button to do there. Same visual language as
+   .open-external-btn (round icon button) since they sit side by side on
+   the card, just a different accent color so the two aren't confused for
+   the same action. */
+.show-on-map-btn {
+  display: none;
+  flex-shrink: 0;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 1.5px solid var(--pink-soft);
+  background: white;
+  color: var(--pink-dark);
+  cursor: pointer;
+  align-items: center;
+  justify-content: center;
+  margin-top: 0.15rem;
+}
+.show-on-map-btn:hover { background: var(--pink-pale); }
+.show-on-map-btn svg { width: 15px; height: 15px; }
+
 .results-footer {
   display: flex;
   align-items: center;
@@ -724,17 +750,98 @@ body.app-shell {
 
   /* overflow-x: hidden (not the old blanket "auto") so if anything is still
      a hair too wide, it gets clipped instead of letting the whole page pan
-     sideways — that sideways drift was the "overflowing to the right" bug.
-     The app-shell override needs matching specificity (body.app-shell, not
-     just body) or the desktop rule's overflow-y: hidden wins regardless of
-     source order, since it's more specific. */
+     sideways — that sideways drift was the "overflowing to the right" bug. */
   body { overflow-x: hidden; }
-  body.app-shell { overflow-y: auto; }
-  .layout { grid-template-columns: 1fr; flex: none; }
-  .controls, .results { height: auto; overflow: visible; }
-  /* The map is the point — keep it visible without scrolling past a wall of
-     filters. Search criteria collapse into an accordion above it instead. */
-  .map { height: 55vh; }
+  /* Map and list used to both be visible at once (map fixed at 55vh, page
+     scrolling down to reach the list below it) — now only one shows at a
+     time (see .mobile-view-toggle / [data-mobile-view] below), so mobile
+     goes back to the same fixed-viewport, only-one-pane-scrolls model
+     body.app-shell already sets up for desktop (~line 36), instead of
+     overriding it to let the whole page scroll. */
+  .layout {
+    grid-template-columns: 1fr;
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+  }
+  .controls { height: auto; overflow: visible; }
+  /* Whichever of #map / .results is active fills all remaining height
+     below the (fixed-height) controls accordion and view toggle; .results
+     keeps the overflow-y: auto it already has on desktop (not overridden
+     here) so only the active list scrolls internally, same as desktop. */
+  .map, .results { flex: 1; min-height: 0; height: auto; }
+  body[data-mobile-view="list"] .map { display: none; }
+  body[data-mobile-view="map"] .results { display: none; }
+
+  /* Segmented pill control, mirroring .map-toggle's visual language
+     (same pill shape/active-fill) since it's the same "flip between two
+     views" idea, just controlling the whole screen instead of the map's
+     own tile style. Sits between the search-criteria accordion and
+     #map/.results, always visible regardless of accordion state. */
+  .mobile-view-toggle {
+    display: flex;
+    gap: 0.4rem;
+    padding: 0.6rem 1rem;
+    background: white;
+    border-bottom: 1px solid var(--line);
+    flex-shrink: 0;
+  }
+  .view-toggle-btn {
+    flex: 1;
+    padding: 0.45rem 0;
+    border: 1.5px solid var(--pink-pale);
+    border-radius: 999px;
+    background: white;
+    color: var(--pink-deep);
+    font-size: 0.82rem;
+    font-weight: 700;
+    cursor: pointer;
+  }
+  .view-toggle-btn.active { background: var(--pink-deep); color: white; border-color: var(--pink-deep); }
+
+  /* Pin-tap preview card — pushed into the map as a real control (see
+     addMapControls in app.js), anchored near the bottom so it reads as
+     floating above the map tiles rather than a full-screen takeover. */
+  .pin-preview-card {
+    position: relative;
+    width: min(88vw, 360px);
+    margin: 0 0 0.75rem;
+    background: white;
+    border-radius: 14px;
+    box-shadow: 0 6px 24px rgba(58, 34, 51, 0.22);
+    padding: 0.9rem 1rem;
+  }
+  /* visibility (not display:none/[hidden]) — Google Maps only measures a
+     pushed BOTTOM_CENTER control's width once, at push time, to center it.
+     A zero-width element at that moment gets centered as a point (left
+     edge at the map's horizontal center) and is never re-measured once it
+     later gains real width, so it ends up hanging off one side of the map
+     instead of centered. Keeping the real width intact (just invisible)
+     avoids that entirely. */
+  .pin-preview-card--hidden { visibility: hidden; pointer-events: none; }
+  .pin-preview-close {
+    position: absolute;
+    top: 0.5rem;
+    right: 0.5rem;
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    border: none;
+    background: var(--pink-pale);
+    color: var(--pink-deep);
+    font-size: 1.1rem;
+    line-height: 1;
+    cursor: pointer;
+  }
+  .pin-preview-body { padding-right: 1.6rem; }
+  .pin-preview-body h3 { margin: 0 0 0.3rem; font-size: 1.02rem; font-weight: 700; color: var(--ink); }
+  /* Reuses .open-external-btn's round-icon-button look, but this is block
+     layout (not the list card's flex row), so give it its own top margin
+     instead of the flex-sibling one baked into .open-external-btn. */
+  .pin-preview-body .open-external-btn { margin-top: 0.6rem; }
+
+  .show-on-map-btn { display: flex; }
 
   .controls { padding: 0.75rem 1rem; border-right: none; border-bottom: 1px solid var(--line); }
   .controls-toggle {
@@ -782,5 +889,6 @@ body.app-shell {
   .map-toggle { font-size: 0.72rem; }
   .map-toggle button { padding: 0.3rem 0.7rem; }
   .open-external-btn { width: 26px; height: 26px; }
+  .show-on-map-btn { width: 26px; height: 26px; }
   .result-badge { width: 22px; height: 22px; font-size: 0.7rem; }
 }

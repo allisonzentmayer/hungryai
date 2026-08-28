@@ -21,7 +21,7 @@
     required before showing personalized ads to EEA/UK visitors.
   -->
 </head>
-<body class="app-shell">
+<body class="app-shell" data-mobile-view="map">
   <header class="topbar">
     <div class="brand">
       <svg class="brand-mark" viewBox="0 0 48 48" aria-hidden="true">
@@ -129,6 +129,18 @@
         </div>
       </div>
     </section>
+
+    <!-- Mobile only — flips which of #map / .results is visible, since
+         there's no room to show both at once on a phone (desktop's
+         side-by-side layout ignores this entirely). Lives outside #map on
+         purpose: controls added via map.controls[].push() render inside
+         the map div, which is exactly what's hidden in list view — a
+         toggle placed there would vanish right when it's needed to switch
+         back. See app.js's view-toggle wiring. -->
+    <div class="mobile-view-toggle" role="tablist">
+      <button type="button" class="view-toggle-btn active" data-view="map" aria-pressed="true">Map</button>
+      <button type="button" class="view-toggle-btn" data-view="list" aria-pressed="false">List</button>
+    </div>
 
     <div id="map" class="map"></div>
 

@@ -91,14 +91,45 @@ ranked list of nearby restaurants with markers on the map.
   domain, apply for Google AdSense and uncomment those blocks with your
   approved publisher/ad-slot IDs (see the inline TODOs).
 
+## Performance / caching (how search stays fast)
+
+The `search-restaurants` function does **no live Google calls** on the
+request path — it's one Supabase read plus caching:
+
+- **Offline enrichment.** Rating, review count, price, cuisine, opening
+  hours and business status are written onto each `restaurants` row by
+  `hungrydb`'s `enrich_restaurants.py` (scheduled every 6h). The function
+  reads those columns and computes "open now" locally from the stored
+  hours. Run the one-time column migration in the hungrydb README before
+  deploying this.
+- **Server-side radius widening.** When the requested radius is empty the
+  function walks outward through wider tiers itself, over cached reads —
+  instead of the browser firing ~5 separate function calls in parallel.
+- **Two cache layers.** Module-scope memory (survives warm invocations) +
+  Netlify Blobs (survives cold starts, shared across containers), both
+  keyed on a ~110m coordinate grid. `app.js` snaps coordinates to that
+  same grid before calling, so the edge `Cache-Control` actually gets
+  repeat hits.
+- **Client-side "Open now".** The response carries an `openNow` flag per
+  place; the browser filters, so toggling the checkbox never refetches and
+  the cache key doesn't split on a value that changes every minute.
+- **Keep-warm.** `netlify/functions/keep-warm.mjs` pings the function
+  every 10 min so a real user's first search doesn't eat a cold start.
+- **On-load prefetch.** `app.js` starts a search against the last known
+  location immediately, in parallel with geolocation.
+
+Requires `@netlify/blobs` (in `package.json`) and Netlify Blobs enabled
+for the site (on by default for current Netlify projects). If Blobs is
+unavailable the function degrades gracefully to memory cache + live reads.
+
 ## Known limitations to fix next (not needed for MVP)
 
 - Ranking currently compares each place only against the *other results in
   the same search*, not a true citywide average — good enough to start,
   worth refining later.
-- No real caching layer yet (the `Cache-Control` header helps at the CDN
-  edge, but a proper cache — Netlify Blobs or similar — would cut Places
-  API costs further as traffic grows).
+- "Open now" is computed from Google's *regular* opening hours, so it
+  doesn't know about holiday hours or one-off closures the way the live
+  `currentOpeningHours.openNow` field did.
 - Press-mentioned restaurants now come from Supabase (see 1b), fed by the
   separate `hungrydb` ingestion pipeline, alongside the curated
   Michelin/James Beard dataset (`data/notable-restaurants.json`).
