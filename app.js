@@ -17,6 +17,12 @@ let markersById = new Map();
 let previewCardEl = null;
 let previewCardBodyEl = null;
 let userLocation = null;
+// The blue "you are here" dot. Deliberately separate from userLocation,
+// which is really "where we're searching" — a zip code, a map click, or a
+// cached fix from a past visit all set userLocation, but none of them say
+// where the user physically IS right now. The dot only ever comes from a
+// fresh geolocation fix this session (see showYouAreHere).
+let youAreHereMarkers = null;
 let notableRestaurants = [];
 let lastResults = [];
 // Zoom level as of the last search — lets the auto-search-on-move listener
@@ -568,6 +574,7 @@ function attemptLocate() {
       searchInterruptedByUser = false;
       userLocation = fix;
       cacheLocation(fix);
+      showYouAreHere(fix);
       withSuppressedInteraction(() => map.setCenter(fix));
       setStatus("");
       clearLocationUI();
@@ -607,6 +614,9 @@ function refineLocationInBackground() {
   return locateUser()
     .then((fix) => {
       cacheLocation(fix);
+      // Shown even if the user has already panned elsewhere — the dot is
+      // where they are, independent of where they're looking.
+      showYouAreHere(fix);
       clearLocationUI();
       hideLocationButton();
       // The user started driving the map while we were resolving — the idle
@@ -670,6 +680,47 @@ function showLocationButton(label = "Enable location access") {
 
 function hideLocationButton() {
   document.getElementById("enableLocationBtn").hidden = true;
+}
+
+// Places (or moves) the blue "you are here" dot. Call ONLY with a real
+// geolocation fix — never a zip, map click, or cached location (see
+// youAreHereMarkers). A soft halo under a solid dot, like Google Maps'
+// own. Not clickable, so it never swallows a tap meant for a pin or the
+// map's click-to-search.
+function showYouAreHere(fix) {
+  if (youAreHereMarkers) {
+    youAreHereMarkers.forEach((m) => m.setPosition(fix));
+    return;
+  }
+  const halo = new google.maps.Marker({
+    position: fix,
+    map,
+    clickable: false,
+    zIndex: 0,
+    icon: {
+      path: google.maps.SymbolPath.CIRCLE,
+      scale: 18,
+      fillColor: "#4285F4",
+      fillOpacity: 0.18,
+      strokeWeight: 0,
+    },
+  });
+  const dot = new google.maps.Marker({
+    position: fix,
+    map,
+    clickable: false,
+    zIndex: 0,
+    title: "You are here",
+    icon: {
+      path: google.maps.SymbolPath.CIRCLE,
+      scale: 7,
+      fillColor: "#4285F4",
+      fillOpacity: 1,
+      strokeColor: "#ffffff",
+      strokeWeight: 2,
+    },
+  });
+  youAreHereMarkers = [halo, dot];
 }
 
 function setStatus(msg) {
