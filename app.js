@@ -639,14 +639,25 @@ async function runInitialSearch() {
   searchInterruptedByUser = false;
   await runSearch();
 
-  // fitMapToResults() just computed its own "fit everything in" zoom — but
-  // if the user has a remembered zoom preference, that should win over the
-  // computed one, same as it does for radius/openNow. Skipped if they've
-  // already taken over the map themselves in the meantime (in which case
-  // wherever they've navigated to takes priority, not a remembered zoom
-  // from before).
+  // fitMapToResults() (triggered inside runSearch) already computed the
+  // zoom needed to show every current result, via fitBounds — but fitBounds
+  // and its zoom cap (applied on bounds_changed) settle asynchronously, so
+  // wait for the map to go idle before reading map.getZoom() below. Timeout is a
+  // backstop in case fitBounds never ran (e.g. an empty result set), same
+  // pattern as withSuppressedInteraction.
+  await Promise.race([
+    new Promise((resolve) => google.maps.event.addListenerOnce(map, "idle", resolve)),
+    new Promise((resolve) => setTimeout(resolve, 1200)),
+  ]);
+  if (searchInterruptedByUser) return;
+
+  // A remembered zoom preference should only ever widen the view, never
+  // narrow it below what's needed to show the current results — otherwise
+  // a zoom saved from a much tighter previous session (testing one block,
+  // say) silently hides most of a new, more spread-out result set until
+  // the user happens to pan into it.
   const savedZoom = loadSettings().zoom;
-  if (savedZoom != null && !searchInterruptedByUser) {
+  if (savedZoom != null && savedZoom <= map.getZoom()) {
     withSuppressedInteraction(() => map.setZoom(savedZoom));
   }
 }
